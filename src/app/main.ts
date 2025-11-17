@@ -1,5 +1,6 @@
 import inquirer from 'inquirer';
 import { PrismaClient } from '@prisma/client';
+import { execSync } from 'child_process';
 
 import { mainUsersFlow, noUserFlow } from '@tui/user-flows.js';
 import { mainProjectsFlow } from '@tui/project-flows.js';
@@ -101,6 +102,9 @@ async function initializeApp(prisma: PrismaClient): Promise<UserKeys | null> {
     console.error('Error initializing Nostr:', error);
   });
 
+  // database
+  await initializeDatabase(prisma);
+  //
   // Load user keys
   let userKeys = await getActiveUserKeys(prisma);
   if (!userKeys) {
@@ -123,6 +127,26 @@ async function cleanup() {
   console.log('✅ Cleanup complete');
 }
 
+async function initializeDatabase(prisma: PrismaClient) {
+  try {
+    // Check if the `Identity` table exists
+    const result = await prisma.$queryRaw<{ name: string }[]>`
+      SELECT name FROM sqlite_master WHERE type='table' AND name='Identity';
+    `;
+
+    if (!result || result.length === 0) {
+      console.log('Table `Identity` does not exist. Running migrations...');
+      // Run migrations
+      execSync('npx prisma migrate deploy', { stdio: 'inherit' });
+      console.log('Migrations applied successfully.');
+    } else {
+      console.log('Database is already initialized.');
+    }
+  } catch (error) {
+    console.error('Error during database initialization:', error);
+    throw error;
+  }
+}
 
 // Start the application
 main().catch(error => {

@@ -55,14 +55,14 @@
     "moduleDetection": "force",
 
     // JSX settings for React (if applicable)
-    "jsx": "react-jsx"
+    "jsx": "react-jsx",
 
     "baseUrl": "./",
     "paths": {
       "@services/*": ["src/services/*"],
       "@interfaces/*": ["src/interfaces/*"],
-      "@utils/*": ["src/utils/*"]
-      "@tui/*": ["src/tui/*"]
+      "@utils/*": ["src/utils/*"],
+      "@tui/*": ["src/tui/*"],
       "@nostr/*": ["src/nostr/*"]
     }
   },

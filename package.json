@@ -8,7 +8,7 @@
     "prepare": "husky install",
     "build": "tsc",
     "dev": "ts-node src/index.ts",
-    "test": "vitest run",
+    "test": "vitest run --coverage",
     "test:ui": "vitest",
     "db:push": "prisma db push",
     "prisma:clean": "rm -rf node_modules && rm -rf prisma/generated && npm install && npx prisma generate",
