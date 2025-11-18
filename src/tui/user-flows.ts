@@ -4,7 +4,7 @@ import { createIdentity, importIdentity, getPrivateKey, getAllIdentities, getAct
 import { PrismaClient } from '@prisma/client';
 import type { Identity as PrismaIdentity } from '@prisma/client';
 import type { UserKeys } from '@interfaces/identity.js';
-import { convertForNIP19 } from '@nostr/utils';
+import { convertForNIP19, createKeys, importKeys, getPublicName } from '@nostr/utils';
 
 const emptyUserKeys: UserKeys = { pubKey: '', privateKey: new Uint8Array() };
 
@@ -101,7 +101,8 @@ async function createUser(prisma: PrismaClient): Promise<UserKeys | null> {
     }
   ]);
 
-  const identity = await createIdentity(prisma, answers.name);
+  const userKeys = createKeys();
+  const identity = await createIdentity(prisma, answers.name, userKeys);
   if (!identity) {
     console.log(chalk.red('Failed to create user'));
     return null;
@@ -123,32 +124,24 @@ async function importUser(prisma: PrismaClient): Promise<UserKeys | null> {
   const answers = await inquirer.prompt([
     {
       type: 'input',
-      name: 'name',
-      message: 'User name:',
-      validate: input => input.trim() !== '' || 'User name is required'
-    },
-    {
-      type: 'input',
       name: 'privateKey',
       message: 'private key: nsec',
       validate: input => input.trim() !== '' || 'private key is required'
     }
   ]);
 
-  const identity = await importIdentity(prisma, answers.name, answers.privateKey);
+  const userKeys = importKeys(answers.privateKey)
+  const name = getPublicName(userKeys.pubKey)
+  const identity = await createIdentity(prisma, name, userKeys);
   if (!identity) {
     console.log(chalk.red('Failed to import user'));
     return null;
   }
 
-  console.log(chalk.green(`User imported: ${identity.name} (${identity.pubkey})`));
-  const userPubkey = identity.pubkey;
-  const userPrivateKey = await getPrivateKey(userPubkey)
-  if (!userPrivateKey) {
-    return null;
-  }
+  const human = convertForNIP19(userKeys);
+  console.log(chalk.green(`User imported: ${identity.name} (${human.npub})`));
 
-  return { pubKey: userPubkey, privateKey: userPrivateKey }
+  return userKeys
 }
 async function exportUser(prisma: PrismaClient): Promise<void> {
   const keys = await getActiveUserKeys(prisma)

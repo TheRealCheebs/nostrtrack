@@ -32,6 +32,7 @@ export async function importIdentity(
   privateKeyHex: string
 ): Promise<PrismaIdentity | null> {
   try {
+    const userKeys = nostr.importIdentity()
     // TODO: validate private key format, it must be nesc and valid nostr key
     const privateKey = hexToBytes(privateKeyHex);
     const pubKey = getPublicKey(privateKey);
@@ -74,18 +75,17 @@ export async function importIdentity(
 
 export async function createIdentity(
   prisma: PrismaClient,
-  name: string
+  name: string,
+  userKeys: UserKeys
 ): Promise<PrismaIdentity> {
-  let userPrivateKey = generateSecretKey();
-  const pubKey = getPublicKey(userPrivateKey);
-  const privateKeyHex = bytesToHex(userPrivateKey);
-  await keytar.setPassword(SERVICE_NAME, pubKey, privateKeyHex);
+  const privateKeyHex = bytesToHex(userKeys.privateKey);
+  await keytar.setPassword(SERVICE_NAME, userKeys.pubKey, privateKeyHex);
 
   const projects = new Map();
 
   return await prisma.identity.create({
     data: {
-      pubkey: pubKey,
+      pubkey: userKeys.pubKey,
       name: name,
       created_at: Date.now(),
       last_used: Date.now(),

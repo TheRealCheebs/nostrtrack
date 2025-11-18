@@ -11,7 +11,7 @@ import { closeAllSubscriptions } from '@nostr/sync.js';
 
 import { getActiveUserKeys } from '@services/prisma/identity.js';
 import { listRelays } from '../settings.js';
-import { initNostr } from '../nostr/utils.js';
+import { getPublicName, initNostr } from '../nostr/utils.js';
 
 import type { UserKeys } from '@interfaces/identity.js';
 import { subscribeAllForUser } from '@services/prisma/subscribe.js';
@@ -21,6 +21,7 @@ async function main() {
   const prisma = new PrismaClient();
   let running = true;
   let currentProject: string = "";
+  let userName: string = "";
 
   let userKeys = await initializeApp(prisma);
 
@@ -31,10 +32,11 @@ async function main() {
         console.log('Error loading user keys, exiting application.');
         return;
       }
+      userName = getPublicName(userKeys.pubKey)
       // Clear screen and show header
       clearScreen();
       // TODO: list the users name
-      showHeader(userKeys.pubKey, currentProject);
+      showHeader(userName, currentProject);
       [userKeys, currentProject, running] = await mainMenu(prisma, userKeys, currentProject);
 
       // Pause before returning to menu (except for exit)
