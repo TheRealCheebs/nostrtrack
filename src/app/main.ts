@@ -8,36 +8,27 @@ import { mainTicketsFlow } from '@tui/ticket-flows.js';
 import { mainSettingsFlow } from '@tui/settings-flows.js';
 import { clearScreen, showHeader, pauseBeforeContinue } from '@tui/ui-utils.js';
 import { closeAllSubscriptions } from '@nostr/sync.js';
+import { userState } from "@state/user-state";
 
 import { getActiveUserKeys } from '@services/prisma/identity.js';
 import { listRelays } from '../settings.js';
-import { getPublicName, initNostr } from '../nostr/utils.js';
+import { initNostr } from '../nostr/utils.js';
 
-import type { UserKeys } from '@interfaces/identity.js';
 import { subscribeAllForUser } from '@services/prisma/subscribe.js';
 
 // Main application loop
 async function main() {
   const prisma = new PrismaClient();
-  let running = true;
   let currentProject: string = "";
-  let userName: string = "";
 
-  let userKeys = await initializeApp(prisma);
-
+  let running = await initializeApp(prisma);
   while (running) {
     try {
       // at this point there should always be userkeys loaded
-      if (!userKeys) {
-        console.log('Error loading user keys, exiting application.');
-        return;
-      }
-      userName = getPublicName(userKeys.pubKey)
       // Clear screen and show header
       clearScreen();
-      // TODO: list the users name
-      showHeader(userName, currentProject);
-      [userKeys, currentProject, running] = await mainMenu(prisma, userKeys, currentProject);
+      showHeader();
+      [currentProject, running] = await mainMenu(prisma, currentProject);
 
       // Pause before returning to menu (except for exit)
       if (running) {
@@ -56,7 +47,7 @@ async function main() {
   process.exit(0);
 }
 
-async function mainMenu(prisma: PrismaClient, userKeys: UserKeys, currentProjectUuid: string): Promise<[UserKeys, string, boolean]> {
+async function mainMenu(prisma: PrismaClient, currentProjectUuid: string): Promise<[string, boolean]> {
   let keepRunning = true;
 
   const { category } = await inquirer.prompt([
@@ -76,13 +67,13 @@ async function mainMenu(prisma: PrismaClient, userKeys: UserKeys, currentProject
 
   switch (category) {
     case 'Users':
-      userKeys = await mainUsersFlow(prisma);
+      await mainUsersFlow(prisma);
       break;
     case 'Projects':
-      currentProjectUuid = await mainProjectsFlow(prisma, userKeys);
+      currentProjectUuid = await mainProjectsFlow(prisma);
       break;
     case 'Tickets':
-      await mainTicketsFlow(prisma, userKeys, currentProjectUuid);
+      await mainTicketsFlow(prisma, currentProjectUuid);
       break;
     case 'Settings':
       await mainSettingsFlow();
@@ -90,11 +81,11 @@ async function mainMenu(prisma: PrismaClient, userKeys: UserKeys, currentProject
     case 'Exit':
       keepRunning = false;
   }
-  return [userKeys, currentProjectUuid, keepRunning];
+  return [currentProjectUuid, keepRunning];
 }
 
 
-async function initializeApp(prisma: PrismaClient): Promise<UserKeys | null> {
+async function initializeApp(prisma: PrismaClient): Promise<boolean> {
   console.log('Initializing application...');
 
   // load config
@@ -112,12 +103,15 @@ async function initializeApp(prisma: PrismaClient): Promise<UserKeys | null> {
   if (!userKeys) {
     userKeys = await noUserFlow(prisma);
   }
+  if (!userKeys) return false;
+
+  userState.setUserKeys(userKeys);
 
   subscribeAllForUser(prisma, userKeys, relays);
 
   // Any other initialization tasks
   console.log('✅ Application initialized');
-  return userKeys;
+  return true;
 }
 
 async function cleanup() {

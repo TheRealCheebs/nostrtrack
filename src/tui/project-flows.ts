@@ -7,11 +7,11 @@ import { saveNewProject, getProjects, updateProject } from '@services/prisma/pro
 import { createAndPublishPrivateProject, createAndPublishProject } from '@services/nostr/projects.js';
 import { formatNostrTimestamp } from 'src/nostr/helpers';
 import { getAllProjectTicketsFromRelay, getAllProjectsFromRelay } from 'src/nostr/utils';
+import { userState } from '@state/user-state';
 
-import type { UserKeys } from '@interfaces/identity';
 import type { Project } from '@interfaces/project';
 
-export async function mainProjectsFlow(prisma: PrismaClient, userKeys: UserKeys): Promise<string> {
+export async function mainProjectsFlow(prisma: PrismaClient): Promise<string> {
   let projectUuid: string = "";
 
   const { action } = await inquirer.prompt([
@@ -35,17 +35,17 @@ export async function mainProjectsFlow(prisma: PrismaClient, userKeys: UserKeys)
 
   switch (action) {
     case 'Create Project':
-      const created = await createProjectFlow(prisma, userKeys);
+      const created = await createProjectFlow(prisma);
       projectUuid = created ?? "";
       break;
     case 'Import Project':
       console.log('TODO: Importing project...');
       break;
     case 'List Projects':
-      await listProjectsFlow(prisma, userKeys.pubKey);
+      await listProjectsFlow(prisma);
       break;
     case 'Switch Project':
-      const switched = await switchProjectsFlow(prisma, userKeys.pubKey);
+      const switched = await switchProjectsFlow(prisma);
       if (switched !== "") {
         projectUuid = switched;
       }
@@ -54,7 +54,7 @@ export async function mainProjectsFlow(prisma: PrismaClient, userKeys: UserKeys)
       await showAllProjectsOnRelayFlow();
       break;
     case 'Show Tickets in Project From Relay':
-      await showAllTicketsInProjectFromRelayFlow(prisma, userKeys.pubKey);
+      await showAllTicketsInProjectFromRelayFlow(prisma);
       break;
     case 'Back to Main Menu':
       break;
@@ -62,8 +62,13 @@ export async function mainProjectsFlow(prisma: PrismaClient, userKeys: UserKeys)
   return projectUuid;
 }
 
-async function createProjectFlow(prisma: PrismaClient, userKeys: UserKeys): Promise<string | null> {
+async function createProjectFlow(prisma: PrismaClient): Promise<string | null> {
   console.log('\n📋 Create New Project\n');
+  const userKeys = userState.getUserKeys();
+  if (!userKeys) {
+    console.log('No user keys found, please load userKeys');
+    return null;
+  }
 
   const answers = await inquirer.prompt([
     {
@@ -139,10 +144,15 @@ async function createProjectFlow(prisma: PrismaClient, userKeys: UserKeys): Prom
   return null
 }
 
-export async function listProjectsFlow(prisma: PrismaClient, pubkey: string) {
+export async function listProjectsFlow(prisma: PrismaClient) {
   console.log('\n📂 Projects\n');
 
-  const projects = await getProjects(prisma, pubkey);
+  const pubKey = userState.getPubKey();
+  if (pubKey === "") {
+    console.log('No pubkey found, please load userKeys');
+    return;
+  }
+  const projects = await getProjects(prisma, pubKey);
 
   if (projects.length === 0) {
     console.log('No projects found.');
@@ -181,10 +191,15 @@ export async function listProjectsFlow(prisma: PrismaClient, pubkey: string) {
   }
 }
 
-export async function switchProjectsFlow(prisma: PrismaClient, pubkey: string): Promise<string> {
+export async function switchProjectsFlow(prisma: PrismaClient): Promise<string> {
   console.log('\n📂 Projects\n');
+  const pubKey = userState.getPubKey();
+  if (pubKey === "") {
+    console.log('No pubkey found, please load userKeys');
+    return "";
+  }
 
-  const projects = await getProjects(prisma, pubkey);
+  const projects = await getProjects(prisma, pubKey);
 
   if (projects.length === 0) {
     console.log('No projects found.');
@@ -326,8 +341,13 @@ async function showAllProjectsOnRelayFlow(): Promise<void> {
   });
 }
 
-async function showAllTicketsInProjectFromRelayFlow(prisma: PrismaClient, pubkey: string): Promise<void> {
-  const projects = await getProjects(prisma, pubkey);
+async function showAllTicketsInProjectFromRelayFlow(prisma: PrismaClient): Promise<void> {
+  const pubKey = userState.getPubKey();
+  if (pubKey === "") {
+    console.log('No pubkey found, please load userKeys');
+    return;
+  }
+  const projects = await getProjects(prisma, pubKey);
 
   if (projects.length === 0) {
     console.log('No projects found.');
@@ -355,7 +375,7 @@ async function showAllTicketsInProjectFromRelayFlow(prisma: PrismaClient, pubkey
     return;
   }
 
-  let project_uuid: string;
+  let project_uuid: string = "";
 
   if (action === 'Select Project') {
     const { project_uuid: selectedProjectUuid } = await inquirer.prompt([{

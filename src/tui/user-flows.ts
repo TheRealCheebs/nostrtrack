@@ -5,6 +5,7 @@ import { PrismaClient } from '@prisma/client';
 import type { Identity as PrismaIdentity } from '@prisma/client';
 import type { UserKeys } from '@interfaces/identity.js';
 import { convertForNIP19, createKeys, importKeys, getPublicName } from '@nostr/utils';
+import { userState } from "@state/user-state";
 
 const emptyUserKeys: UserKeys = { pubKey: '', privateKey: new Uint8Array() };
 
@@ -115,7 +116,9 @@ async function createUser(prisma: PrismaClient): Promise<UserKeys | null> {
     return null;
   }
 
-  return { pubKey: userPubkey, privateKey: userPrivateKey }
+  const newUserKeys = { pubKey: userPubkey, privateKey: userPrivateKey };
+  userState.setUserKeys(newUserKeys); // Update the global state here
+  return newUserKeys;
 }
 
 async function importUser(prisma: PrismaClient): Promise<UserKeys | null> {
@@ -140,6 +143,7 @@ async function importUser(prisma: PrismaClient): Promise<UserKeys | null> {
 
   const human = convertForNIP19(userKeys);
   console.log(chalk.green(`User imported: ${identity.name} (${human.npub})`));
+  userState.setUserKeys(userKeys); // Update the global state here
 
   return userKeys
 }
@@ -195,7 +199,9 @@ async function switchUser(prisma: PrismaClient): Promise<UserKeys | null> {
     console.log(chalk.green(`Switched to user: ${identity.name} (${identity.pubkey})`));
     const userPrivateKey = await getPrivateKey(identity.pubkey);
     if (!userPrivateKey) return null;
-    return { pubKey: identity.pubkey, privateKey: userPrivateKey };
+    const newUserKeys = { pubKey: identity.pubkey, privateKey: userPrivateKey };
+    userState.setUserKeys(newUserKeys); // Update the global state here
+    return newUserKeys;
   } else {
     console.log(chalk.red('User not found'));
     return null;
@@ -276,7 +282,9 @@ async function deleteUser(prisma: PrismaClient): Promise<UserKeys | null> {
     console.log(chalk.green(`Switched to user: ${newIdentity.name} (${newIdentity.pubkey})`));
     const userPrivateKey = await getPrivateKey(newIdentity.pubkey);
     if (!userPrivateKey) return null;
-    return { pubKey: newIdentity.pubkey, privateKey: userPrivateKey };
+    const newUserKeys = { pubKey: newIdentity.pubkey, privateKey: userPrivateKey };
+    userState.setUserKeys(newUserKeys); // Update the global state here
+    return newUserKeys;
   } else {
     console.log(chalk.red('Failed to set new active user.'));
     return null;
