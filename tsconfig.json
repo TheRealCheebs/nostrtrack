@@ -63,7 +63,7 @@
       "@interfaces/*": ["src/interfaces/*"],
       "@utils/*": ["src/utils/*"],
       "@tui/*": ["src/tui/*"],
-      "@nostr/*": ["src/nostr/*"]
+      "@nostr/*": ["src/nostr/*"],
       "@state/*": ["src/state/*"]
     }
   },

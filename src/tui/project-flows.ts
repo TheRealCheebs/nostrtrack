@@ -11,8 +11,7 @@ import { userState } from '@state/user-state';
 
 import type { Project } from '@interfaces/project';
 
-export async function mainProjectsFlow(prisma: PrismaClient): Promise<string> {
-  let projectUuid: string = "";
+export async function mainProjectsFlow(prisma: PrismaClient) {
 
   const { action } = await inquirer.prompt([
     {
@@ -35,8 +34,7 @@ export async function mainProjectsFlow(prisma: PrismaClient): Promise<string> {
 
   switch (action) {
     case 'Create Project':
-      const created = await createProjectFlow(prisma);
-      projectUuid = created ?? "";
+      await createProjectFlow(prisma);
       break;
     case 'Import Project':
       console.log('TODO: Importing project...');
@@ -45,10 +43,7 @@ export async function mainProjectsFlow(prisma: PrismaClient): Promise<string> {
       await listProjectsFlow(prisma);
       break;
     case 'Switch Project':
-      const switched = await switchProjectsFlow(prisma);
-      if (switched !== "") {
-        projectUuid = switched;
-      }
+      await switchProjectsFlow(prisma);
       break;
     case 'Show All From Relay':
       await showAllProjectsOnRelayFlow();
@@ -59,15 +54,14 @@ export async function mainProjectsFlow(prisma: PrismaClient): Promise<string> {
     case 'Back to Main Menu':
       break;
   }
-  return projectUuid;
 }
 
-async function createProjectFlow(prisma: PrismaClient): Promise<string | null> {
+async function createProjectFlow(prisma: PrismaClient) {
   console.log('\n📋 Create New Project\n');
   const userKeys = userState.getUserKeys();
   if (!userKeys) {
     console.log('No user keys found, please load userKeys');
-    return null;
+    return;
   }
 
   const answers = await inquirer.prompt([
@@ -137,11 +131,10 @@ async function createProjectFlow(prisma: PrismaClient): Promise<string | null> {
     }
     console.log(`\n✅ Project created successfully!`);
     console.log(`   UUID: ${project.uuid}`);
-    return project.uuid;
+    userState.setActiveProject(project.uuid);
   } catch (error) {
     console.error('\n❌ Failed to create project:', error);
   }
-  return null
 }
 
 export async function listProjectsFlow(prisma: PrismaClient) {
@@ -191,19 +184,17 @@ export async function listProjectsFlow(prisma: PrismaClient) {
   }
 }
 
-export async function switchProjectsFlow(prisma: PrismaClient): Promise<string> {
+export async function switchProjectsFlow(prisma: PrismaClient) {
   console.log('\n📂 Projects\n');
   const pubKey = userState.getPubKey();
   if (pubKey === "") {
     console.log('No pubkey found, please load userKeys');
-    return "";
   }
 
   const projects = await getProjects(prisma, pubKey);
 
   if (projects.length === 0) {
     console.log('No projects found.');
-    return "";
   }
 
   console.table(projects.map(p => ({
@@ -224,7 +215,6 @@ export async function switchProjectsFlow(prisma: PrismaClient): Promise<string> 
 
   if (action === 'Back to Main Menu') {
     console.log('Action Canceled, not switching.');
-    return "";
   }
 
   const { project_uuid } = await inquirer.prompt([{
@@ -237,7 +227,7 @@ export async function switchProjectsFlow(prisma: PrismaClient): Promise<string> 
     })),
   },
   ]);
-  return project_uuid;
+  userState.setActiveProject(project_uuid);
 }
 
 export async function getProjectDetails(prisma: PrismaClient, projectId: string): Promise<void> {

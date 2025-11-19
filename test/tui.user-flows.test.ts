@@ -29,6 +29,8 @@ vi.mock('@services/prisma/identity.js', () => ({
 // Mock nostr utils used by exportUser
 vi.mock('@nostr/utils', () => ({
   convertForNIP19: vi.fn((keys: any) => ({ npub: 'npub', nsec: 'nsec' })),
+  createKeys: vi.fn(() => ({ pubKey: 'mockPubKey', privateKey: Uint8Array.from([1, 2, 3]) })),
+  getPublicName: vi.fn((pubKey: string) => `mockNameFor:${pubKey}`),
 }));
 
 import * as identity from '@services/prisma/identity.js';
@@ -39,10 +41,10 @@ beforeEach(() => {
   responses = [];
 
   // silence console output during tests
-  vi.spyOn(console, 'log').mockImplementation(() => {});
-  vi.spyOn(console, 'info').mockImplementation(() => {});
-  vi.spyOn(console, 'warn').mockImplementation(() => {});
-  vi.spyOn(console, 'error').mockImplementation(() => {});
+  vi.spyOn(console, 'log').mockImplementation(() => { });
+  vi.spyOn(console, 'info').mockImplementation(() => { });
+  vi.spyOn(console, 'warn').mockImplementation(() => { });
+  vi.spyOn(console, 'error').mockImplementation(() => { });
 
   // prevent tests from exiting the process
   vi.spyOn(process, 'exit').mockImplementation(((code?: number) => undefined) as any);
@@ -90,9 +92,9 @@ describe('TUI user flows', () => {
 
     (identity.getActiveUserKeys as any).mockResolvedValue({ pubKey: 'pubX', privateKey: Uint8Array.from([7, 8, 9]) });
 
-  const { convertForNIP19 } = await import('../src/nostr/utils');
+    const { convertForNIP19 } = await import('../src/nostr/utils');
 
-  const res = await mainUsersFlow({} as any);
+    const res = await mainUsersFlow({} as any);
     // mainUsersFlow returns emptyUserKeys in most non-returning actions
     expect(convertForNIP19).toHaveBeenCalled();
     expect(res.pubKey).toBe('');

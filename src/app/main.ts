@@ -19,7 +19,6 @@ import { subscribeAllForUser } from '@services/prisma/subscribe.js';
 // Main application loop
 async function main() {
   const prisma = new PrismaClient();
-  let currentProject: string = "";
 
   let running = await initializeApp(prisma);
   while (running) {
@@ -28,7 +27,7 @@ async function main() {
       // Clear screen and show header
       clearScreen();
       showHeader();
-      [currentProject, running] = await mainMenu(prisma, currentProject);
+      running = await mainMenu(prisma);
 
       // Pause before returning to menu (except for exit)
       if (running) {
@@ -47,7 +46,7 @@ async function main() {
   process.exit(0);
 }
 
-async function mainMenu(prisma: PrismaClient, currentProjectUuid: string): Promise<[string, boolean]> {
+async function mainMenu(prisma: PrismaClient): Promise<boolean> {
   let keepRunning = true;
 
   const { category } = await inquirer.prompt([
@@ -70,10 +69,10 @@ async function mainMenu(prisma: PrismaClient, currentProjectUuid: string): Promi
       await mainUsersFlow(prisma);
       break;
     case 'Projects':
-      currentProjectUuid = await mainProjectsFlow(prisma);
+      await mainProjectsFlow(prisma);
       break;
     case 'Tickets':
-      await mainTicketsFlow(prisma, currentProjectUuid);
+      await mainTicketsFlow(prisma);
       break;
     case 'Settings':
       await mainSettingsFlow();
@@ -81,7 +80,7 @@ async function mainMenu(prisma: PrismaClient, currentProjectUuid: string): Promi
     case 'Exit':
       keepRunning = false;
   }
-  return [currentProjectUuid, keepRunning];
+  return keepRunning;
 }
 
 

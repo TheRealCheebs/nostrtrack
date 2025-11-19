@@ -6,10 +6,10 @@ import { updateAndPublishPrivateProject, updateAndPublishProject } from '@servic
 import { addNewTicketToProject, getProjectById, prismaToProject, updateProjectNostrEvent } from '@services/prisma/project';
 import { getAllTicketsFromRelay } from '@nostr/utils.js';
 import { PrismaClient } from '@prisma/client';
-import type { UserKeys } from '@interfaces/identity';
+import { userState } from '@state/user-state';
 import type { Ticket } from '@interfaces/ticket';
 
-export async function mainTicketsFlow(prisma: PrismaClient, userKeys: UserKeys, projectUuid: string) {
+export async function mainTicketsFlow(prisma: PrismaClient) {
   const { action } = await inquirer.prompt([
     {
       type: 'list',
@@ -30,7 +30,7 @@ export async function mainTicketsFlow(prisma: PrismaClient, userKeys: UserKeys, 
   switch (action) {
     case 'Create Ticket':
       // in public project start state is unverified, or member in private
-      await createTicketFlow(prisma, userKeys, projectUuid);
+      await createTicketFlow(prisma);
       break;
     case 'Edit Ticket':
       // must be admin in public project, or member in private
@@ -55,9 +55,19 @@ export async function mainTicketsFlow(prisma: PrismaClient, userKeys: UserKeys, 
   }
 }
 
-async function createTicketFlow(prisma: PrismaClient, userKeys: UserKeys, projectUuid: string): Promise<string | null> {
+async function createTicketFlow(prisma: PrismaClient): Promise<string | null> {
   console.log('\n📋 Create New Ticket\n');
 
+  const userKeys = userState.getUserKeys();
+  if (!userKeys) {
+    console.log('No user keys found, please load userKeys');
+    return null;
+  }
+  const projectUuid = userState.getActiveProject();
+  if (projectUuid == "") {
+    console.log('No projectUuid found, please select active project');
+    return null;
+  }
   const answers = await inquirer.prompt([
     {
       type: 'input',

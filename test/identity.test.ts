@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { createKeys } from '@nostr/utils.js';
 
 let responses: any[] = [];
 // Mock keytar with an in-memory map
@@ -80,10 +81,10 @@ beforeEach(() => {
   responses = [];
 
   // silence console output during tests
-  vi.spyOn(console, 'log').mockImplementation(() => {});
-  vi.spyOn(console, 'info').mockImplementation(() => {});
-  vi.spyOn(console, 'warn').mockImplementation(() => {});
-  vi.spyOn(console, 'error').mockImplementation(() => {});
+  vi.spyOn(console, 'log').mockImplementation(() => { });
+  vi.spyOn(console, 'info').mockImplementation(() => { });
+  vi.spyOn(console, 'warn').mockImplementation(() => { });
+  vi.spyOn(console, 'error').mockImplementation(() => { });
 
   // prevent tests from exiting the process
   vi.spyOn(process, 'exit').mockImplementation(((code?: number) => undefined) as any);
@@ -109,7 +110,8 @@ describe('Identity service (prisma)', () => {
         projects: JSON.stringify({}),
       });
 
-      const res = await createIdentity(prisma, 'alice');
+      const userKeys = createKeys()
+      const res = await createIdentity(prisma, 'alice', userKeys);
 
       // keytar.setPassword should have been called with the derived pubkey
       expect(keytar.setPassword).toHaveBeenCalled();
@@ -117,33 +119,6 @@ describe('Identity service (prisma)', () => {
       expect(mockIdentity.create).toHaveBeenCalled();
       expect(res).toBeDefined();
       expect(res.name).toBe('alice');
-    });
-  });
-
-  describe('importIdentity', () => {
-    it('should save provided private key to keytar and create identity when none exists', async () => {
-      const { prisma, mockIdentity } = makeMockPrisma();
-
-      // Simulate no existing identity for that pubkey
-      mockIdentity.findUnique.mockResolvedValue(null);
-
-      // Mock create result
-      mockIdentity.create.mockResolvedValue({
-        pubkey: 'pubaabb',
-        name: 'bob',
-        created_at: Date.now(),
-        last_used: Date.now(),
-        is_active: true,
-        projects: JSON.stringify({}),
-      });
-
-      const privateHex = 'aabbccddeeff';
-      const res = await importIdentity(prisma, 'bob', privateHex);
-
-      expect(res).toBeDefined();
-      // setPassword should be called to persist the private key
-      expect(keytar.setPassword).toHaveBeenCalled();
-      expect(mockIdentity.create).toHaveBeenCalled();
     });
   });
 

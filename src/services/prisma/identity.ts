@@ -1,5 +1,4 @@
 import keytar from 'keytar';
-import { getPublicKey, generateSecretKey } from 'nostr-tools';
 import { bytesToHex, hexToBytes } from '@noble/hashes/utils' // already an installed dependency
 import { PrismaClient } from '@prisma/client';
 import type { Identity as PrismaIdentity } from '@prisma/client';
@@ -22,53 +21,6 @@ export async function getActiveUserKeys(prisma: PrismaClient): Promise<UserKeys 
     return { pubKey: userPubkey, privateKey: userPrivateKey };
   } catch (error) {
     console.error("Error in getActiveUserKeys:", error);
-    return null;
-  }
-}
-
-export async function importIdentity(
-  prisma: PrismaClient,
-  name: string,
-  privateKeyHex: string
-): Promise<PrismaIdentity | null> {
-  try {
-    const userKeys = nostr.importIdentity()
-    // TODO: validate private key format, it must be nesc and valid nostr key
-    const privateKey = hexToBytes(privateKeyHex);
-    const pubKey = getPublicKey(privateKey);
-
-    // Check if identity with this pubkey already exists
-    const existing = await prisma.identity.findUnique({
-      where: { pubkey: pubKey }
-    });
-    if (existing) {
-      console.log('An identity with this public key already exists.');
-      return null;
-    }
-
-    // Store private key in keytar
-    await keytar.setPassword(SERVICE_NAME, pubKey, privateKeyHex);
-
-    // Create identity in database
-    // Deactivate all other identities
-    await prisma.identity.updateMany({
-      where: { is_active: true },
-      data: { is_active: false }
-    });
-
-    const projects = new Map();
-    return await prisma.identity.create({
-      data: {
-        pubkey: pubKey,
-        name: name,
-        created_at: Date.now(),
-        last_used: Date.now(),
-        is_active: true,
-        projects: JSON.stringify(projects) // not subscribed to any projects on import
-      }
-    });
-  } catch (error) {
-    console.error('Failed to import identity:', error);
     return null;
   }
 }
