@@ -86,7 +86,10 @@ export function getPublicName(pubKey: string): string {
     name = nip19.npubEncode(pubKey);
   }
   return name;
+}
 
+export function getNpub(pubkey: string): string {
+  return nip19.npubEncode(pubkey);
 }
 
 export function convertForNIP19(userKeys: UserKeys): { nsec: string, npub: string } {

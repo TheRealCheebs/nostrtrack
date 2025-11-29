@@ -57,7 +57,7 @@ export async function mainProjectsFlow(prisma: PrismaClient) {
 }
 
 async function createProjectFlow(prisma: PrismaClient) {
-  console.log('\n📋 Create New Project\n');
+  console.log('\nCreate New Project\n');
   const userKeys = userState.getUserKeys();
   if (!userKeys) {
     console.log('No user keys found, please load userKeys');
@@ -129,16 +129,16 @@ async function createProjectFlow(prisma: PrismaClient) {
     } catch (relayError) {
       console.warn(" Failed to send project to relay:", relayError)
     }
-    console.log(`\n✅ Project created successfully!`);
-    console.log(`   UUID: ${project.uuid}`);
+    console.log(`\nProject created successfully!`);
+    console.log(`\tUUID: ${project.uuid}`);
     userState.setActiveProject(project.uuid);
   } catch (error) {
-    console.error('\n❌ Failed to create project:', error);
+    console.error('\nFailed to create project:', error);
   }
 }
 
 export async function listProjectsFlow(prisma: PrismaClient) {
-  console.log('\n📂 Projects\n');
+  console.log('\nProjects\n');
 
   const pubKey = userState.getPubKey();
   if (pubKey === "") {
@@ -185,7 +185,7 @@ export async function listProjectsFlow(prisma: PrismaClient) {
 }
 
 export async function switchProjectsFlow(prisma: PrismaClient) {
-  console.log('\n📂 Projects\n');
+  console.log('\nProjects\n');
   const pubKey = userState.getPubKey();
   if (pubKey === "") {
     console.log('No pubkey found, please load userKeys');
@@ -256,10 +256,10 @@ export async function getProjectDetails(prisma: PrismaClient, projectId: string)
     console.log("Tickets:");
     if (project.tickets.length > 0) {
       project.tickets.forEach((ticket) => {
-        console.log(`  ${ticket.state}: ${ticket.title}`);
+        console.log(`\t${ticket.state}: ${ticket.title}`);
       });
     } else {
-      console.log("  No tickets available.");
+      console.log("\tNo tickets available.");
     }
 
 
@@ -269,16 +269,16 @@ export async function getProjectDetails(prisma: PrismaClient, projectId: string)
       const adminMembers = project.members.filter((member) => member.role === "admin");
       if (adminMembers.length > 0) {
         adminMembers.forEach((admin) => {
-          console.log(`  - ${admin.pubkey}`);
+          console.log(`\t- ${admin.pubkey}`);
         });
       } else {
-        console.log("  No admin members.");
+        console.log("\tNo admin members.");
       }
     } else {
       // List project members on private projects
       console.log("Members:");
       project.members.forEach((member) => {
-        console.log(`  - ${member.pubkey} (${member.role})`);
+        console.log(`\t- ${member.pubkey} (${member.role})`);
       });
     }
   } catch (error) {
@@ -322,10 +322,10 @@ async function showAllProjectsOnRelayFlow(): Promise<void> {
       const adminMembers = project.members.filter((member) => member.role === "admin");
       if (adminMembers.length > 0) {
         adminMembers.forEach((admin) => {
-          console.log(`  - ${admin.pubKey}`);
+          console.log(`\t- ${admin.pubKey}`);
         });
       } else {
-        console.log("  No admin members.");
+        console.log("\tNo admin members.");
       }
     }
   });

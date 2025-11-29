@@ -1,10 +1,10 @@
 import inquirer from 'inquirer';
 import chalk from 'chalk';
-import { createIdentity, importIdentity, getPrivateKey, getAllIdentities, getActiveUserKeys, setActiveIdentityByName, removeIdentityByKey } from '@services/prisma/identity.js';
+import { createIdentity, getPrivateKey, getAllIdentities, getActiveUserKeys, setActiveIdentityByName, removeIdentityByKey } from '@services/prisma/identity.js';
 import { PrismaClient } from '@prisma/client';
 import type { Identity as PrismaIdentity } from '@prisma/client';
 import type { UserKeys } from '@interfaces/identity.js';
-import { convertForNIP19, createKeys, importKeys, getPublicName } from '@nostr/utils';
+import { convertForNIP19, createKeys, importKeys, getPublicName, getNpub } from '@nostr/utils';
 import { userState } from "@state/user-state";
 
 const emptyUserKeys: UserKeys = { pubKey: '', privateKey: new Uint8Array() };
@@ -91,7 +91,7 @@ export async function noUserFlow(prisma: PrismaClient): Promise<UserKeys> {
 }
 
 async function createUser(prisma: PrismaClient): Promise<UserKeys | null> {
-  console.log('\n📋 Create New User\n');
+  console.log('\nCreate New User\n');
 
   const answers = await inquirer.prompt([
     {
@@ -109,7 +109,7 @@ async function createUser(prisma: PrismaClient): Promise<UserKeys | null> {
     return null;
   }
 
-  console.log(chalk.green(`User created: ${identity.name} (${identity.pubkey})`));
+  console.log(chalk.green(`User created: ${identity.name} (${getNpub(identity.pubkey)})`));
   const userPubkey = identity.pubkey;
   const userPrivateKey = await getPrivateKey(userPubkey)
   if (!userPrivateKey) {
@@ -122,7 +122,7 @@ async function createUser(prisma: PrismaClient): Promise<UserKeys | null> {
 }
 
 async function importUser(prisma: PrismaClient): Promise<UserKeys | null> {
-  console.log('\n📋 Import User\n');
+  console.log('\nImport User\n');
 
   const answers = await inquirer.prompt([
     {
@@ -169,7 +169,7 @@ async function listUsers(prisma: PrismaClient): Promise<void> {
     console.log(chalk.bold.blue('Users:'));
     identities.forEach((identity: PrismaIdentity) => {
       const activeMarker = identity.is_active ? chalk.green(' (active)') : '';
-      console.log(`${chalk.cyan(identity.name)} | ${identity.pubkey}${activeMarker}`);
+      console.log(`${chalk.cyan(identity.name)} | ${getNpub(identity.pubkey)}${activeMarker}`);
     });
   });
 }
@@ -181,13 +181,13 @@ async function switchUser(prisma: PrismaClient): Promise<UserKeys | null> {
     return null;
   }
   const choices = identities.map(identity => ({
-    name: `${identity.name} (${identity.pubkey})${identity.is_active ? ' (active)' : ''}`,
+    name: `${identity.name} (${getNpub(identity.pubkey)})${identity.is_active ? ' (active)' : ''}`,
     value: identity.name
   }));
 
   const { name } = await inquirer.prompt([
     {
-      type: 'list',
+      type: 'rawlist',
       name: 'name',
       message: 'Select a user to switch to:',
       choices
@@ -196,7 +196,7 @@ async function switchUser(prisma: PrismaClient): Promise<UserKeys | null> {
 
   const identity = await setActiveIdentityByName(prisma, name);
   if (identity) {
-    console.log(chalk.green(`Switched to user: ${identity.name} (${identity.pubkey})`));
+    console.log(chalk.green(`Switched to user: ${identity.name} (${getNpub(identity.pubkey)})`));
     const userPrivateKey = await getPrivateKey(identity.pubkey);
     if (!userPrivateKey) return null;
     const newUserKeys = { pubKey: identity.pubkey, privateKey: userPrivateKey };
@@ -216,13 +216,13 @@ async function deleteUser(prisma: PrismaClient): Promise<UserKeys | null> {
     return null;
   }
   const choices = identities.map(identity => ({
-    name: `${identity.name} (${identity.pubkey})${identity.is_active ? ' (active)' : ''}`,
+    name: `${identity.name} (${getNpub(identity.pubkey)})${identity.is_active ? ' (active)' : ''}`,
     value: identity.pubkey
   }));
 
   const { pubkey } = await inquirer.prompt([
     {
-      type: 'list',
+      type: 'rawlist',
       name: 'pubkey',
       message: 'Select a user to delete:',
       choices
@@ -239,7 +239,7 @@ async function deleteUser(prisma: PrismaClient): Promise<UserKeys | null> {
     {
       type: 'confirm',
       name: 'confirm',
-      message: `Are you sure you want to delete user ${identity.name} (${identity.pubkey})?`,
+      message: `Are you sure you want to delete user ${identity.name} (${getNpub(identity.pubkey)})?`,
       default: false
     }
   ]);
@@ -254,7 +254,7 @@ async function deleteUser(prisma: PrismaClient): Promise<UserKeys | null> {
     console.log(chalk.red('Failed to delete user.'));
     return null;
   }
-  console.log(chalk.green(`User deleted: ${identity.name} (${identity.pubkey})`));
+  console.log(chalk.green(`User deleted: ${identity.name} (${getNpub(identity.pubkey)})`));
 
   // Get remaining users
   const remaining = await getAllIdentities(prisma);
@@ -266,12 +266,12 @@ async function deleteUser(prisma: PrismaClient): Promise<UserKeys | null> {
 
   // Force user to select a new active user
   const newChoices = remaining.map(i => ({
-    name: `${i.name} (${i.pubkey})${i.is_active ? ' (active)' : ''}`,
+    name: `${i.name} (${getNpub(i.pubkey)})${i.is_active ? ' (active)' : ''}`,
     value: i.name
   }));
   const { name: newName } = await inquirer.prompt([
     {
-      type: 'list',
+      type: 'rawlist',
       name: 'name',
       message: 'Select a user to set as active:',
       choices: newChoices
@@ -279,7 +279,7 @@ async function deleteUser(prisma: PrismaClient): Promise<UserKeys | null> {
   ]);
   const newIdentity = await setActiveIdentityByName(prisma, newName);
   if (newIdentity) {
-    console.log(chalk.green(`Switched to user: ${newIdentity.name} (${newIdentity.pubkey})`));
+    console.log(chalk.green(`Switched to user: ${newIdentity.name} (${getNpub(newIdentity.pubkey)})`));
     const userPrivateKey = await getPrivateKey(newIdentity.pubkey);
     if (!userPrivateKey) return null;
     const newUserKeys = { pubKey: newIdentity.pubkey, privateKey: userPrivateKey };

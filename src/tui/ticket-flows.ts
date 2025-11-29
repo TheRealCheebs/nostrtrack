@@ -56,7 +56,7 @@ export async function mainTicketsFlow(prisma: PrismaClient) {
 }
 
 async function createTicketFlow(prisma: PrismaClient): Promise<string | null> {
-  console.log('\n📋 Create New Ticket\n');
+  console.log('\nCreate New Ticket\n');
 
   const userKeys = userState.getUserKeys();
   if (!userKeys) {
@@ -100,7 +100,7 @@ async function createTicketFlow(prisma: PrismaClient): Promise<string | null> {
   const pproject = await getProjectById(prisma, projectUuid);
   // project should exist but check.
   if (!pproject) {
-    console.error('\n❌ Failed to find the project');
+    console.error('\nFailed to find the project');
     return null
   }
   const project = prismaToProject(pproject);
@@ -131,13 +131,13 @@ async function createTicketFlow(prisma: PrismaClient): Promise<string | null> {
       }
       addNewTicketToProject(prisma, project.uuid, ticket.uuid);
     } catch (relayError) {
-      console.warn(" Failed to send ticket to relay:", relayError)
+      console.warn("Failed to send ticket to relay:", relayError)
     }
-    console.log(`\n✅ Ticket created successfully!`);
-    console.log(`   UUID: ${ticket.uuid}`);
+    console.log(`\nTicket created successfully!`);
+    console.log(`\tUUID: ${ticket.uuid}`);
     return project.uuid;
   } catch (error) {
-    console.error('\n❌ Failed to create ticket:', error);
+    console.error('\nFailed to create ticket:', error);
   }
   return null
 
