@@ -1,10 +1,11 @@
-import { SimplePool } from "nostr-tools"
+import { generateSecretKey, getPublicKey, nip19, SimplePool } from "nostr-tools"
 import type { NostrEvent } from 'nostr-tools';
 import { NOSTR_PROJECT_KIND, NOSTR_TICKET_KIND } from "src/constants";
 import { nostrEventToProject } from "@services/nostr/projects.js";
 import { nostrEventToTicket } from "@services/nostr/ticket.js";
 import type { Project } from "@interfaces/project.js";
 import type { Ticket } from "@interfaces/ticket.js";
+import type { UserKeys } from "@interfaces/identity.js";
 
 let pool: SimplePool | null = null; // Global pool instance
 let relays: string[] = []; // Global list of relays
@@ -32,6 +33,71 @@ export async function initNostr(relayUrls: string[]): Promise<void> {
   }
 }
 
+export function createKeys(): UserKeys {
+  let userPrivateKey = generateSecretKey();
+  const pubKey = getPublicKey(userPrivateKey);
+
+  return { pubKey: pubKey, privateKey: userPrivateKey }
+}
+
+export function importKeys(nsec: string): UserKeys {
+  try {
+    const decoded = nip19.decode(nsec);
+
+    if (decoded.type !== "nsec") {
+      throw new Error("Only nsec keys are accepted.");
+    }
+
+    const pubKey = getPublicKey(decoded.data)
+
+    return { pubKey: pubKey, privateKey: decoded.data };
+  } catch (error) {
+    throw new Error("Invalid nsec provided.");
+  }
+}
+
+export function getPublicName(pubKey: string): string {
+  //const { data: pubkey } = nip19.decode('npub1...'); // Replace with actual npub
+
+  const pool = new SimplePool();
+  const relays = ['wss://relay.damus.io']; // Add more relays
+  let name = '';
+
+  const filter = {
+    authors: [pubKey],
+    kinds: [0],
+    limit: 1,
+  }
+  const sub = pool.subscribeMany(relays,
+    filter,
+    {
+      onevent(event) {
+        const profile = JSON.parse(event.content);
+        name = profile.name;
+        sub.close();
+      },
+      oneose() {
+        sub.close();
+      }
+    }
+  );
+  // if the userName doesn't come back show the npub
+  if (name === '') {
+    name = nip19.npubEncode(pubKey);
+  }
+  return name;
+}
+
+export function getNpub(pubkey: string): string {
+  return nip19.npubEncode(pubkey);
+}
+
+export function convertForNIP19(userKeys: UserKeys): { nsec: string, npub: string } {
+  const nsec = nip19.nsecEncode(userKeys.privateKey);
+  const npub = nip19.npubEncode(userKeys.pubKey);
+
+  return { nsec, npub };
+}
 /**
  * Publish an event to all configured relays.
  * @param event - The Nostr event to publish.

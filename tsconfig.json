@@ -55,15 +55,16 @@
     "moduleDetection": "force",
 
     // JSX settings for React (if applicable)
-    "jsx": "react-jsx"
+    "jsx": "react-jsx",
 
     "baseUrl": "./",
     "paths": {
       "@services/*": ["src/services/*"],
       "@interfaces/*": ["src/interfaces/*"],
-      "@utils/*": ["src/utils/*"]
-      "@tui/*": ["src/tui/*"]
-      "@nostr/*": ["src/nostr/*"]
+      "@utils/*": ["src/utils/*"],
+      "@tui/*": ["src/tui/*"],
+      "@nostr/*": ["src/nostr/*"],
+      "@state/*": ["src/state/*"]
     }
   },
   "include": ["src/**/*"], // Include all TypeScript files in the 'src' directory

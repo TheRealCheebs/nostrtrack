@@ -1,13 +1,17 @@
 import inquirer from 'inquirer';
+import { userState } from "@state/user-state";
 
 export function clearScreen() {
   process.stdout.write('\x1b[2J\x1b[0f');
 }
 
-export function showHeader(user: string, project: string) {
+export function showHeader() {
+  const user = userState.getUserName();
+  const project = userState.getActiveProject();
+
   console.log(`
 ╔══════════════════════════════════════════════════════════════╗
-║                    Nostr Project Manager                     ║
+║                    NostrTrack                                ║
 ╚══════════════════════════════════════════════════════════════╝
 `);
   if (user !== "") {
