@@ -8,12 +8,7 @@ export async function mainSettingsFlow() {
       type: 'rawlist',
       name: 'action',
       message: 'Settings Actions:',
-      choices: [
-        'Sync with Relays',
-        'List Relays',
-        'Modify Relays',
-        'Back to Main Menu',
-      ],
+      choices: ['Sync with Relays', 'List Relays', 'Modify Relays', 'Back to Main Menu'],
     },
   ]);
 
@@ -46,7 +41,6 @@ async function listRelaysFlow() {
 }
 
 async function modifyRelaysFlow() {
-
   const { action } = await inquirer.prompt([
     {
       type: 'rawlist',
@@ -62,7 +56,6 @@ async function modifyRelaysFlow() {
   }
 
   if (action === 'Add') {
-
     const { relayUrl } = await inquirer.prompt([
       {
         type: 'input',

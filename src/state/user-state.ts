@@ -1,11 +1,11 @@
-import { getPublicName } from "../nostr/utils";
+import { getPublicName } from '../nostr/utils';
 
 type UserKeys = { pubKey: string; privateKey: Uint8Array } | null;
 
 class UserState {
   private userKeys: UserKeys = null;
   private userName: string | null = null;
-  private activeProject: string = "";
+  private activeProject: string = '';
   private subscribers: Array<() => void> = [];
 
   // Set userKeys and notify subscribers if it changes
@@ -22,7 +22,7 @@ class UserState {
   }
 
   getPubKey(): string {
-    if (!this.userKeys) return "";
+    if (!this.userKeys) return '';
     return this.userKeys.pubKey;
   }
 

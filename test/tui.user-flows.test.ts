@@ -29,7 +29,10 @@ vi.mock('../src/services/prisma/identity', () => ({
 // Mock nostr utils used by exportUser
 vi.mock('../src/nostr/utils', () => ({
   convertForNIP19: vi.fn((keys: any) => ({ npub: 'npub', nsec: 'nsec' })),
-  createKeys: vi.fn(() => ({ pubKey: 'mockPubKey', privateKey: Uint8Array.from([1, 2, 3]) })),
+  createKeys: vi.fn(() => ({
+    pubKey: 'mockPubKey',
+    privateKey: Uint8Array.from([1, 2, 3]),
+  })),
   getPublicName: vi.fn((pubKey: string) => `mockNameFor:${pubKey}`),
   getNpub: vi.fn((pubKey: string) => `mockNpubFor:${pubKey}`),
 }));
@@ -42,10 +45,10 @@ beforeEach(() => {
   responses = [];
 
   // silence console output during tests
-  vi.spyOn(console, 'log').mockImplementation(() => { });
-  vi.spyOn(console, 'info').mockImplementation(() => { });
-  vi.spyOn(console, 'warn').mockImplementation(() => { });
-  vi.spyOn(console, 'error').mockImplementation(() => { });
+  vi.spyOn(console, 'log').mockImplementation(() => {});
+  vi.spyOn(console, 'info').mockImplementation(() => {});
+  vi.spyOn(console, 'warn').mockImplementation(() => {});
+  vi.spyOn(console, 'error').mockImplementation(() => {});
 
   // prevent tests from exiting the process
   vi.spyOn(process, 'exit').mockImplementation(((code?: number) => undefined) as any);
@@ -62,7 +65,10 @@ describe('TUI user flows', () => {
     responses = [{ action: 'Create User' }, { name: 'alice' }];
 
     // Mock identity.createIdentity and getPrivateKey
-    (identity.createIdentity as any).mockResolvedValue({ pubkey: 'pub1', name: 'alice' });
+    (identity.createIdentity as any).mockResolvedValue({
+      pubkey: 'pub1',
+      name: 'alice',
+    });
     (identity.getPrivateKey as any).mockResolvedValue(Uint8Array.from([1, 2, 3]));
 
     const keys = await noUserFlow({} as any);
@@ -77,9 +83,13 @@ describe('TUI user flows', () => {
 
     // Mock identities list and active switching
     (identity.getAllIdentities as any).mockResolvedValue([
-      { pubkey: 'pub1', name: 'alice', is_active: false }
+      { pubkey: 'pub1', name: 'alice', is_active: false },
     ]);
-    (identity.setActiveIdentityByName as any).mockResolvedValue({ pubkey: 'pub1', name: 'alice', is_active: true });
+    (identity.setActiveIdentityByName as any).mockResolvedValue({
+      pubkey: 'pub1',
+      name: 'alice',
+      is_active: true,
+    });
     (identity.getPrivateKey as any).mockResolvedValue(Uint8Array.from([4, 5, 6]));
 
     const keys = await mainUsersFlow({} as any);
@@ -91,7 +101,10 @@ describe('TUI user flows', () => {
   it('mainUsersFlow -> export active user calls convertForNIP19 when active keys exist', async () => {
     responses = [{ action: 'Export Active User' }];
 
-    (identity.getActiveUserKeys as any).mockResolvedValue({ pubKey: 'pubX', privateKey: Uint8Array.from([7, 8, 9]) });
+    (identity.getActiveUserKeys as any).mockResolvedValue({
+      pubKey: 'pubX',
+      privateKey: Uint8Array.from([7, 8, 9]),
+    });
 
     const { convertForNIP19 } = await import('../src/nostr/utils');
 

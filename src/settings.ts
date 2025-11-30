@@ -77,4 +77,3 @@ export async function modifyRelays(action: 'add' | 'remove', relayUrl: string): 
 
   await saveRelaysConfig(relays);
 }
-

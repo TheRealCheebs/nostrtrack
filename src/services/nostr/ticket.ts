@@ -1,6 +1,6 @@
 import { nip44, finalizeEvent } from 'nostr-tools';
 import { randomBytes } from '@noble/hashes/utils';
-import { NOSTR_GIFT_WRAP_KIND, NOSTR_TICKET_KIND } from '../../constants'
+import { NOSTR_GIFT_WRAP_KIND, NOSTR_TICKET_KIND } from '../../constants';
 import { publishToRelays } from '../../nostr/utils';
 
 import type { Ticket } from '../../interfaces/ticket';
@@ -11,36 +11,41 @@ import type { NostrEvent, EventTemplate } from 'nostr-tools';
 export async function createAndPublishPrivateTicket(
   ticket: Ticket,
   userKeys: UserKeys,
-  projectMembers: ProjectMember[]
+  projectMembers: ProjectMember[],
 ): Promise<NostrEvent> {
-
   // Create a rumor (NIP-17)
-  const rumor = finalizeEvent({
-    kind: NOSTR_TICKET_KIND,
-    created_at: Math.floor(Date.now() / 1000),
-    content: JSON.stringify(ticket),
-    tags: [
-      ['d', ticket.uuid],
-      ['project-uuid', ticket.projectUuid],
-      ['private', 'true'],
-    ]
-  }, userKeys.privateKey);
+  const rumor = finalizeEvent(
+    {
+      kind: NOSTR_TICKET_KIND,
+      created_at: Math.floor(Date.now() / 1000),
+      content: JSON.stringify(ticket),
+      tags: [
+        ['d', ticket.uuid],
+        ['project-uuid', ticket.projectUuid],
+        ['private', 'true'],
+      ],
+    },
+    userKeys.privateKey,
+  );
 
   // Create gift wraps for each member
   const wraps = [];
   for (const member of projectMembers) {
-    const converKey = nip44.getConversationKey(userKeys.privateKey, member.pubKey);  // Ensure conversation key exists
+    const converKey = nip44.getConversationKey(userKeys.privateKey, member.pubKey); // Ensure conversation key exists
     const nonce = randomBytes(24); // 24 random bytes
-    const wrap = finalizeEvent({
-      kind: NOSTR_GIFT_WRAP_KIND,
-      created_at: Math.floor(Date.now() / 1000),
-      content: nip44.encrypt(JSON.stringify(rumor), converKey, nonce),
-      tags: [
-        ['p', member.pubKey],
-        ['project-uuid', ticket.projectUuid],
-        ['type', 'ticket'],
-      ]
-    }, userKeys.privateKey);
+    const wrap = finalizeEvent(
+      {
+        kind: NOSTR_GIFT_WRAP_KIND,
+        created_at: Math.floor(Date.now() / 1000),
+        content: nip44.encrypt(JSON.stringify(rumor), converKey, nonce),
+        tags: [
+          ['p', member.pubKey],
+          ['project-uuid', ticket.projectUuid],
+          ['type', 'ticket'],
+        ],
+      },
+      userKeys.privateKey,
+    );
     wraps.push(wrap);
   }
 
@@ -54,9 +59,8 @@ export async function createAndPublishPrivateTicket(
 
 export async function createAndPublishTicket(
   ticket: Ticket,
-  userKeys: UserKeys
+  userKeys: UserKeys,
 ): Promise<NostrEvent> {
-
   const eventTemplate: EventTemplate = {
     kind: NOSTR_TICKET_KIND,
     created_at: Math.floor(Date.now() / 1000),
@@ -65,7 +69,7 @@ export async function createAndPublishTicket(
       ['d', ticket.uuid],
       ['project-uuid', ticket.projectUuid],
       ['private', 'false'],
-    ]
+    ],
   };
 
   const signed = finalizeEvent(eventTemplate, userKeys.privateKey);
@@ -75,9 +79,8 @@ export async function createAndPublishTicket(
 
 export async function updateAndPublishTicket(
   ticket: Ticket,
-  userKeys: UserKeys
+  userKeys: UserKeys,
 ): Promise<NostrEvent> {
-
   const eventTemplate: EventTemplate = {
     kind: NOSTR_TICKET_KIND,
     created_at: Math.floor(Date.now() / 1000),
@@ -87,7 +90,7 @@ export async function updateAndPublishTicket(
       ['project-uuid', ticket.projectUuid],
       ['private', 'false'],
       ['e', ticket.lastEventId],
-    ]
+    ],
   };
 
   const signed = finalizeEvent(eventTemplate, userKeys.privateKey);
@@ -98,7 +101,7 @@ export async function updateAndPublishTicket(
 export async function deleteTicket(
   ticketEventId: string,
   userKeys: UserKeys,
-  reason: string = "Deleted by user"
+  reason: string = 'Deleted by user',
 ): Promise<NostrEvent> {
   try {
     // Step 1: Create the deletion event
@@ -107,18 +110,18 @@ export async function deleteTicket(
         kind: 5, // Kind 5 is the standard for deletion events
         created_at: Math.floor(Date.now() / 1000),
         content: reason, // Optional reason for deletion
-        tags: [["e", ticketEventId]], // Reference the event to delete
+        tags: [['e', ticketEventId]], // Reference the event to delete
       },
-      userKeys.privateKey
+      userKeys.privateKey,
     );
 
     // Step 2: Publish the deletion event to the Nostr relays
     await publishToRelays(deletionEvent);
 
-    console.log("Ticket deleted successfully:", deletionEvent.id);
+    console.log('Ticket deleted successfully:', deletionEvent.id);
     return deletionEvent;
   } catch (error) {
-    console.error("Failed to delete ticket:", error);
+    console.error('Failed to delete ticket:', error);
     throw error;
   }
 }
@@ -149,7 +152,7 @@ export function nostrEventToTicket(event: NostrEvent): Ticket {
 
 export async function getPrivateTicket(
   rumorEvent: NostrEvent,
-  userKeys: UserKeys
+  userKeys: UserKeys,
 ): Promise<Ticket> {
   // Extract the encrypted content and nonce from the rumor
   const encryptedContent = rumorEvent.content;

@@ -1,22 +1,17 @@
 import { PrismaClient } from '@prisma/client';
-import type { Project as PrismaProject, ProjectMember as PrismaProjectMember } from '@prisma/client';
+import type {
+  Project as PrismaProject,
+  ProjectMember as PrismaProjectMember,
+} from '@prisma/client';
 import type { Project, ProjectMember } from '../../interfaces/project';
 
 export async function saveNewProject(
   prisma: PrismaClient,
-  project: Project
+  project: Project,
 ): Promise<PrismaProject> {
-
   // lastEventId and lastEventCreatedAt should be null on new events
   // tickets will also be empty on a brand new project.
-  const {
-    uuid,
-    name,
-    description,
-    isPrivate,
-    createdAt,
-    members,
-  } = project;
+  const { uuid, name, description, isPrivate, createdAt, members } = project;
 
   return await prisma.project.create({
     data: {
@@ -25,7 +20,7 @@ export async function saveNewProject(
       description,
       is_private: isPrivate,
       created_at: createdAt,
-      last_event_id: "",
+      last_event_id: '',
       last_event_created_at: createdAt,
       members: {
         create: members.map((member) => ({
@@ -54,11 +49,14 @@ export async function getProjects(prisma: PrismaClient, pubKey: string): Promise
         },
       ],
     },
-    orderBy: { created_at: 'desc' }
+    orderBy: { created_at: 'desc' },
   });
 }
 
-export async function getTicketUuidsByProjectUuid(prisma: PrismaClient, projectUuid: string): Promise<string[]> {
+export async function getTicketUuidsByProjectUuid(
+  prisma: PrismaClient,
+  projectUuid: string,
+): Promise<string[]> {
   try {
     // Fetch the project with its tickets
     const project = await prisma.project.findUnique({
@@ -81,12 +79,21 @@ export async function getTicketUuidsByProjectUuid(prisma: PrismaClient, projectU
     // Map the tickets to extract their UUIDs
     return project.tickets.map((ticket) => ticket.uuid);
   } catch (error) {
-    console.error("Error fetching ticket UUIDs:", error);
+    console.error('Error fetching ticket UUIDs:', error);
     throw error; // Rethrow the error to handle it at a higher level
   }
 }
 
-export async function getProjectById(prisma: PrismaClient, uuid: string): Promise<(PrismaProject & { members: PrismaProjectMember[]; tickets: { uuid: string }[] }) | null> {
+export async function getProjectById(
+  prisma: PrismaClient,
+  uuid: string,
+): Promise<
+  | (PrismaProject & {
+      members: PrismaProjectMember[];
+      tickets: { uuid: string }[];
+    })
+  | null
+> {
   return await prisma.project.findUnique({
     where: { uuid },
     include: {
@@ -98,7 +105,7 @@ export async function getProjectById(prisma: PrismaClient, uuid: string): Promis
 
 export async function deleteProject(prisma: PrismaClient, uuid: string): Promise<void> {
   await prisma.project.delete({
-    where: { uuid }
+    where: { uuid },
   });
 }
 
@@ -106,7 +113,7 @@ export async function updateProjectNostrEvent(
   prisma: PrismaClient,
   uuid: string,
   eventId: string,
-  eventCreated: number
+  eventCreated: number,
 ): Promise<void> {
   try {
     await prisma.project.update({
@@ -125,7 +132,7 @@ export async function updateProjectNostrEvent(
 export async function addNewTicketToProject(
   prisma: PrismaClient,
   projectUuid: string,
-  ticketUuid: string
+  ticketUuid: string,
 ): Promise<void> {
   try {
     // Ensure the project exists
@@ -166,7 +173,7 @@ export async function addNewTicketToProject(
 export async function removeTicketFromProject(
   prisma: PrismaClient,
   projectUuid: string,
-  ticketUuid: string
+  ticketUuid: string,
 ): Promise<void> {
   try {
     await prisma.project.update({
@@ -185,10 +192,7 @@ export async function removeTicketFromProject(
   }
 }
 
-export async function updateProject(
-  prisma: PrismaClient,
-  project: Project
-): Promise<void> {
+export async function updateProject(prisma: PrismaClient, project: Project): Promise<void> {
   const {
     uuid,
     name,
@@ -238,7 +242,12 @@ function prismaToProjectMember(prismaMember: PrismaProjectMember): ProjectMember
 }
 
 // Main function to map Prisma Project to general Project
-export function prismaToProject(prismaProject: PrismaProject & { members: PrismaProjectMember[]; tickets: { uuid: string }[] }): Project {
+export function prismaToProject(
+  prismaProject: PrismaProject & {
+    members: PrismaProjectMember[];
+    tickets: { uuid: string }[];
+  },
+): Project {
   return {
     uuid: prismaProject.uuid,
     name: prismaProject.name,

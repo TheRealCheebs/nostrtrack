@@ -20,4 +20,4 @@ if (process.argv.length < 3) {
 
 program.addCommand(userCommand);
 program.addCommand(ticketCommand);
-program.parse() */;
+program.parse() */

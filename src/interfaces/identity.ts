@@ -11,4 +11,3 @@ export type UserKeys = {
   pubKey: string;
   privateKey: Uint8Array;
 };
-

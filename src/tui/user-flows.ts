@@ -1,16 +1,22 @@
 import inquirer from 'inquirer';
 import chalk from 'chalk';
-import { createIdentity, getPrivateKey, getAllIdentities, getActiveUserKeys, setActiveIdentityByName, removeIdentityByKey } from '../services/prisma/identity';
+import {
+  createIdentity,
+  getPrivateKey,
+  getAllIdentities,
+  getActiveUserKeys,
+  setActiveIdentityByName,
+  removeIdentityByKey,
+} from '../services/prisma/identity';
 import { PrismaClient } from '@prisma/client';
 import type { Identity as PrismaIdentity } from '@prisma/client';
 import type { UserKeys } from '../interfaces/identity';
 import { convertForNIP19, createKeys, importKeys, getPublicName, getNpub } from '../nostr/utils';
-import { userState } from "../state/user-state";
+import { userState } from '../state/user-state';
 
 const emptyUserKeys: UserKeys = { pubKey: '', privateKey: new Uint8Array() };
 
 export async function mainUsersFlow(prisma: PrismaClient): Promise<UserKeys> {
-
   const { action } = await inquirer.prompt([
     {
       type: 'rawlist',
@@ -62,16 +68,14 @@ export async function noUserFlow(prisma: PrismaClient): Promise<UserKeys> {
 
   while (running) {
     console.log('No active user found. Please create or import a user.');
-    const { action } = await inquirer.prompt([{
-      type: 'rawlist',
-      name: 'action',
-      message: 'What would you like to do?',
-      choices: [
-        'Create User',
-        'Import User',
-        'Exit'
-      ],
-    }]);
+    const { action } = await inquirer.prompt([
+      {
+        type: 'rawlist',
+        name: 'action',
+        message: 'What would you like to do?',
+        choices: ['Create User', 'Import User', 'Exit'],
+      },
+    ]);
 
     switch (action) {
       case 'Create User':
@@ -98,8 +102,8 @@ async function createUser(prisma: PrismaClient): Promise<UserKeys | null> {
       type: 'input',
       name: 'name',
       message: 'User name:',
-      validate: input => input.trim() !== '' || 'User name is required'
-    }
+      validate: (input) => input.trim() !== '' || 'User name is required',
+    },
   ]);
 
   const userKeys = createKeys();
@@ -111,7 +115,7 @@ async function createUser(prisma: PrismaClient): Promise<UserKeys | null> {
 
   console.log(chalk.green(`User created: ${identity.name} (${getNpub(identity.pubkey)})`));
   const userPubkey = identity.pubkey;
-  const userPrivateKey = await getPrivateKey(userPubkey)
+  const userPrivateKey = await getPrivateKey(userPubkey);
   if (!userPrivateKey) {
     return null;
   }
@@ -129,12 +133,12 @@ async function importUser(prisma: PrismaClient): Promise<UserKeys | null> {
       type: 'input',
       name: 'privateKey',
       message: 'private key: nsec',
-      validate: input => input.trim() !== '' || 'private key is required'
-    }
+      validate: (input) => input.trim() !== '' || 'private key is required',
+    },
   ]);
 
-  const userKeys = importKeys(answers.privateKey)
-  const name = getPublicName(userKeys.pubKey)
+  const userKeys = importKeys(answers.privateKey);
+  const name = getPublicName(userKeys.pubKey);
   const identity = await createIdentity(prisma, name, userKeys);
   if (!identity) {
     console.log(chalk.red('Failed to import user'));
@@ -145,10 +149,10 @@ async function importUser(prisma: PrismaClient): Promise<UserKeys | null> {
   console.log(chalk.green(`User imported: ${identity.name} (${human.npub})`));
   userState.setUserKeys(userKeys); // Update the global state here
 
-  return userKeys
+  return userKeys;
 }
 async function exportUser(prisma: PrismaClient): Promise<void> {
-  const keys = await getActiveUserKeys(prisma)
+  const keys = await getActiveUserKeys(prisma);
   if (!keys) {
     return;
   }
@@ -180,9 +184,9 @@ async function switchUser(prisma: PrismaClient): Promise<UserKeys | null> {
     console.log(chalk.yellow('No users found'));
     return null;
   }
-  const choices = identities.map(identity => ({
+  const choices = identities.map((identity) => ({
     name: `${identity.name} (${getNpub(identity.pubkey)})${identity.is_active ? ' (active)' : ''}`,
-    value: identity.name
+    value: identity.name,
   }));
 
   const { name } = await inquirer.prompt([
@@ -190,8 +194,8 @@ async function switchUser(prisma: PrismaClient): Promise<UserKeys | null> {
       type: 'rawlist',
       name: 'name',
       message: 'Select a user to switch to:',
-      choices
-    }
+      choices,
+    },
   ]);
 
   const identity = await setActiveIdentityByName(prisma, name);
@@ -215,9 +219,9 @@ async function deleteUser(prisma: PrismaClient): Promise<UserKeys | null> {
     console.log(chalk.yellow('No users found. You must create or import a user.'));
     return null;
   }
-  const choices = identities.map(identity => ({
+  const choices = identities.map((identity) => ({
     name: `${identity.name} (${getNpub(identity.pubkey)})${identity.is_active ? ' (active)' : ''}`,
-    value: identity.pubkey
+    value: identity.pubkey,
   }));
 
   const { pubkey } = await inquirer.prompt([
@@ -225,11 +229,11 @@ async function deleteUser(prisma: PrismaClient): Promise<UserKeys | null> {
       type: 'rawlist',
       name: 'pubkey',
       message: 'Select a user to delete:',
-      choices
-    }
+      choices,
+    },
   ]);
 
-  const identity = identities.find(i => i.pubkey === pubkey);
+  const identity = identities.find((i) => i.pubkey === pubkey);
   if (!identity) {
     console.log(chalk.red('User not found.'));
     return null;
@@ -240,8 +244,8 @@ async function deleteUser(prisma: PrismaClient): Promise<UserKeys | null> {
       type: 'confirm',
       name: 'confirm',
       message: `Are you sure you want to delete user ${identity.name} (${getNpub(identity.pubkey)})?`,
-      default: false
-    }
+      default: false,
+    },
   ]);
   if (!confirm) {
     console.log(chalk.yellow('User deletion cancelled.'));
@@ -265,24 +269,29 @@ async function deleteUser(prisma: PrismaClient): Promise<UserKeys | null> {
   }
 
   // Force user to select a new active user
-  const newChoices = remaining.map(i => ({
+  const newChoices = remaining.map((i) => ({
     name: `${i.name} (${getNpub(i.pubkey)})${i.is_active ? ' (active)' : ''}`,
-    value: i.name
+    value: i.name,
   }));
   const { name: newName } = await inquirer.prompt([
     {
       type: 'rawlist',
       name: 'name',
       message: 'Select a user to set as active:',
-      choices: newChoices
-    }
+      choices: newChoices,
+    },
   ]);
   const newIdentity = await setActiveIdentityByName(prisma, newName);
   if (newIdentity) {
-    console.log(chalk.green(`Switched to user: ${newIdentity.name} (${getNpub(newIdentity.pubkey)})`));
+    console.log(
+      chalk.green(`Switched to user: ${newIdentity.name} (${getNpub(newIdentity.pubkey)})`),
+    );
     const userPrivateKey = await getPrivateKey(newIdentity.pubkey);
     if (!userPrivateKey) return null;
-    const newUserKeys = { pubKey: newIdentity.pubkey, privateKey: userPrivateKey };
+    const newUserKeys = {
+      pubKey: newIdentity.pubkey,
+      privateKey: userPrivateKey,
+    };
     userState.setUserKeys(newUserKeys); // Update the global state here
     return newUserKeys;
   } else {

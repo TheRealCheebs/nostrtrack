@@ -6,11 +6,7 @@ async function syncWithRelay() {
   //just a stub
 }
 
-export async function saveNewTicket(
-  prisma: PrismaClient,
-  ticket: Ticket,
-): Promise<PrismaTicket> {
-
+export async function saveNewTicket(prisma: PrismaClient, ticket: Ticket): Promise<PrismaTicket> {
   const {
     uuid,
     projectUuid,
@@ -32,25 +28,25 @@ export async function saveNewTicket(
       title,
       description,
       state,
-      parent_uuid: parentUuid === "" ? null : parentUuid,
+      parent_uuid: parentUuid === '' ? null : parentUuid,
       children_uuids: JSON.stringify(childrenUuids),
       creator_pubkey: creatorPubkey,
       created_at: createdAt,
       updated_at: createdAt,
-      last_event_id: "",
+      last_event_id: '',
       last_event_created_at: createdAt,
-    }
+    },
   });
 }
 
 export async function getTickets(
   prisma: PrismaClient,
-  filter?: { state?: string, projectUuid?: string }
+  filter?: { state?: string; projectUuid?: string },
 ): Promise<PrismaTicket[]> {
   await syncWithRelay();
   const prismaTickets = await prisma.ticket.findMany({
     where: filter?.state ? { state: filter.state } : {},
-    orderBy: { created_at: 'desc' }
+    orderBy: { created_at: 'desc' },
   });
   return prismaTickets;
 }
@@ -58,12 +54,12 @@ export async function getTickets(
 export async function updateTicketState(
   prisma: PrismaClient,
   uuid: string,
-  state: string
+  state: string,
 ): Promise<boolean> {
   const now = Date.now();
   const result = await prisma.ticket.updateMany({
     where: { uuid },
-    data: { state, updated_at: now }
+    data: { state, updated_at: now },
   });
   return result.count > 0;
 }
@@ -72,7 +68,7 @@ export async function updateTicketNostrEvent(
   prisma: PrismaClient,
   uuid: string,
   eventId: string,
-  eventCreated: number
+  eventCreated: number,
 ): Promise<void> {
   try {
     await prisma.ticket.update({
@@ -90,10 +86,7 @@ export async function updateTicketNostrEvent(
   }
 }
 
-export async function updateTicket(
-  prisma: PrismaClient,
-  ticket: Ticket,
-): Promise<boolean> {
+export async function updateTicket(prisma: PrismaClient, ticket: Ticket): Promise<boolean> {
   const {
     uuid,
     type,
@@ -108,7 +101,6 @@ export async function updateTicket(
   } = ticket;
 
   const transaction = [];
-
 
   // note: connect adds new references without impacting existing ones
   // disconnect removes references
@@ -127,9 +119,9 @@ export async function updateTicket(
         last_event_created_at: lastEventCreatedAt,
         children: {
           set: childrenUuids.map((childId) => ({ uuid: childId })),
-        }
+        },
       },
-    })
+    }),
   );
 
   // updates.children.forEach(childId => {
@@ -155,11 +147,7 @@ export async function updateTicket(
   }
 }
 
-export async function deleteTicket(
-  prisma: PrismaClient,
-  uuid: string
-): Promise<boolean> {
+export async function deleteTicket(prisma: PrismaClient, uuid: string): Promise<boolean> {
   const result = await prisma.ticket.deleteMany({ where: { uuid } });
   return result.count > 0;
 }
-

@@ -27,28 +27,27 @@ npm run tui            # start the TUI
 - Use short branch names: `feat/`, `fix/`, `chore/`, `docs/`.
 - Keep commits focused and atomic. Follow a simple commit message style:
 
-	```text
-	<type>(scope): short description
-	```
+  ```text
+  <type>(scope): short description
+  ```
 
-	e.g. `feat(tui): add project import flow`
+  e.g. `feat(tui): add project import flow`
 
 ## Conventional Commits
 
 - This project follows the Conventional Commits specification to keep the history readable and enable automation (release notes, changelogs, semantic versioning).
 - Commit messages should follow the form:
 
-	```text
-	type(scope?): short summary
-	```
+  ```text
+  type(scope?): short summary
+  ```
 
-	where type is one of: feat, fix, docs, style, refactor, perf, test, chore, ci, build
+  where type is one of: feat, fix, docs, style, refactor, perf, test, chore, ci, build
 
-	Examples:
-
-	- `feat(tui): add project import flow`
-	- `fix(api): handle missing relay responses`
-	- `docs: update development quickstart`
+  Examples:
+  - `feat(tui): add project import flow`
+  - `fix(api): handle missing relay responses`
+  - `docs: update development quickstart`
 
 - Commit messages are validated with `commitlint` and a `husky` `commit-msg` hook. To enable this locally:
 
@@ -90,5 +89,4 @@ npm run build
 
 - Add context in your PR description and link any related issues. If your change touches Nostr relays or keys, describe expected behavior and privacy considerations.
 
-Thank you — small, focused contributions make the project better for everyone. 
-
+Thank you — small, focused contributions make the project better for everyone.

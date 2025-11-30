@@ -8,7 +8,6 @@ import type { Project } from '../interfaces/project';
 import type { Ticket } from '../interfaces/ticket';
 import type { UserKeys } from '../interfaces/identity';
 
-
 export type Subscription = {
   id: string;
   sub: SubCloser;
@@ -42,7 +41,7 @@ function removeSubscription(subscriptionId: string): boolean {
   return true; // Return true if the subscription was successfully removed
 }
 export function closeAllSubscriptions() {
-  subscriptions.forEach(sub => {
+  subscriptions.forEach((sub) => {
     sub.sub.close();
   });
 }
@@ -54,8 +53,8 @@ export function closeAllSubscriptions() {
 // Helper to extract tag values from a Nostr event
 export function getTagValue(event: Event, tag: string): string[] {
   return event.tags
-    .filter(t => t[0] === tag && typeof t[1] === 'string')
-    .map(t => t[1] as string);
+    .filter((t) => t[0] === tag && typeof t[1] === 'string')
+    .map((t) => t[1] as string);
 }
 
 /**
@@ -80,7 +79,7 @@ export function subscribeToPrivateProjectUpdates(
     ['#project-uuid']: [projectUuid],
     ['#type']: ['project'],
     ['#p']: [userKeys.pubKey],
-    since: lastSyncTime || Math.floor(Date.now() / 1000)
+    since: lastSyncTime || Math.floor(Date.now() / 1000),
   };
 
   async function handleProjectEvent(event: Event) {
@@ -114,16 +113,13 @@ export function subscribeToPrivateProjectUpdates(
     }
   }
 
-  return new SimplePool().subscribeMany(
-    relays,
-    filter,
-    {
-      onevent: (event: Event) => { void handleProjectEvent(event); },
-      onclose: (reasons: any) => console.log('Subscription closed:', reasons)
-    }
-  );
+  return new SimplePool().subscribeMany(relays, filter, {
+    onevent: (event: Event) => {
+      void handleProjectEvent(event);
+    },
+    onclose: (reasons: any) => console.log('Subscription closed:', reasons),
+  });
 }
-
 
 /**
  * Subscribe to project updates and emit ticket updates via callback.
@@ -145,7 +141,7 @@ export function subscribeToProjectUpdates(
   const filter = {
     kinds: [NOSTR_PROJECT_KIND],
     '#project-uuid': [projectUuid],
-    since: lastSyncTime || Math.floor(Date.now() / 1000)
+    since: lastSyncTime || Math.floor(Date.now() / 1000),
   };
 
   async function handleProjectEvent(event: Event) {
@@ -180,14 +176,12 @@ export function subscribeToProjectUpdates(
     }
   }
 
-  return new SimplePool().subscribeMany(
-    relays,
-    filter,
-    {
-      onevent: (event: Event) => { void handleProjectEvent(event); },
-      onclose: (reasons: any) => console.log('Subscription closed:', reasons)
-    }
-  );
+  return new SimplePool().subscribeMany(relays, filter, {
+    onevent: (event: Event) => {
+      void handleProjectEvent(event);
+    },
+    onclose: (reasons: any) => console.log('Subscription closed:', reasons),
+  });
 }
 
 /**
@@ -213,7 +207,7 @@ export function subscribeToPrivateTicketUpdates(
     ['#ticket-uuid']: [ticketUuid],
     ['#type']: ['ticket'],
     ['#p']: [userKeys.pubKey],
-    since: lastSyncTime || Math.floor(Date.now() / 1000)
+    since: lastSyncTime || Math.floor(Date.now() / 1000),
   };
 
   async function handleTicketEvent(event: Event) {
@@ -221,14 +215,12 @@ export function subscribeToPrivateTicketUpdates(
     onTicketEvent(privateTicket);
   }
 
-  return new SimplePool().subscribeMany(
-    relays,
-    filter,
-    {
-      onevent: (event: Event) => { void handleTicketEvent(event); },
-      onclose: (reasons: any) => console.log('Subscription closed:', reasons)
-    }
-  );
+  return new SimplePool().subscribeMany(relays, filter, {
+    onevent: (event: Event) => {
+      void handleTicketEvent(event);
+    },
+    onclose: (reasons: any) => console.log('Subscription closed:', reasons),
+  });
 }
 
 /**
@@ -251,7 +243,7 @@ export function subscribeToTicketUpdates(
     kinds: [NOSTR_TICKET_KIND],
     '#project-uuid': [projectUuid],
     '#d': [ticketUuid],
-    since: lastSyncTime || Math.floor(Date.now() / 1000)
+    since: lastSyncTime || Math.floor(Date.now() / 1000),
   };
 
   async function handleTicketEvent(event: Event) {
@@ -259,12 +251,10 @@ export function subscribeToTicketUpdates(
     onTicketUpdate(ticketUpdate);
   }
 
-  return new SimplePool().subscribeMany(
-    relays,
-    filter,
-    {
-      onevent: (event: Event) => { void handleTicketEvent(event); },
-      onclose: (reasons: any) => console.log('Subscription closed:', reasons)
-    }
-  );
+  return new SimplePool().subscribeMany(relays, filter, {
+    onevent: (event: Event) => {
+      void handleTicketEvent(event);
+    },
+    onclose: (reasons: any) => console.log('Subscription closed:', reasons),
+  });
 }

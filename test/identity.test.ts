@@ -11,7 +11,7 @@ vi.mock('keytar', () => {
       return true;
     }),
     getPassword: vi.fn(async (_service: string, account: string) => {
-      return store.has(account) ? store.get(account) ?? null : null;
+      return store.has(account) ? (store.get(account) ?? null) : null;
     }),
     deletePassword: vi.fn(async (_service: string, account: string) => {
       return store.delete(account);
@@ -80,10 +80,10 @@ beforeEach(() => {
   responses = [];
 
   // silence console output during tests
-  vi.spyOn(console, 'log').mockImplementation(() => { });
-  vi.spyOn(console, 'info').mockImplementation(() => { });
-  vi.spyOn(console, 'warn').mockImplementation(() => { });
-  vi.spyOn(console, 'error').mockImplementation(() => { });
+  vi.spyOn(console, 'log').mockImplementation(() => {});
+  vi.spyOn(console, 'info').mockImplementation(() => {});
+  vi.spyOn(console, 'warn').mockImplementation(() => {});
+  vi.spyOn(console, 'error').mockImplementation(() => {});
 
   // prevent tests from exiting the process
   vi.spyOn(process, 'exit').mockImplementation(((code?: number) => undefined) as any);
@@ -109,7 +109,7 @@ describe('Identity service (prisma)', () => {
         projects: JSON.stringify({}),
       });
 
-      const userKeys = createKeys()
+      const userKeys = createKeys();
       const res = await createIdentity(prisma, 'alice', userKeys);
 
       // keytar.setPassword should have been called with the derived pubkey
@@ -142,21 +142,27 @@ describe('Identity service (prisma)', () => {
       const pub = 'pubprojuser';
 
       // Initially user has no projects
-      mockIdentity.findUnique.mockResolvedValueOnce({ projects: JSON.stringify({}) });
+      mockIdentity.findUnique.mockResolvedValueOnce({
+        projects: JSON.stringify({}),
+      });
       mockIdentity.update.mockResolvedValue({});
 
       await addOrUpdateUserProject(prisma, pub, 'proj-1', true);
       expect(mockIdentity.update).toHaveBeenCalled();
 
       // Simulate prisma returning the updated projects when asked
-      mockIdentity.findUnique.mockResolvedValueOnce({ projects: JSON.stringify({ 'proj-1': true }) });
+      mockIdentity.findUnique.mockResolvedValueOnce({
+        projects: JSON.stringify({ 'proj-1': true }),
+      });
       const projects = await getUserProjects(prisma, pub);
       expect(projects instanceof Map).toBe(true);
       expect(projects.get('proj-1')).toBe(true);
 
       // Now test removeUserProject
       // simulate prior state
-      mockIdentity.findUnique.mockResolvedValueOnce({ projects: JSON.stringify({ 'proj-1': true, 'proj-2': false }) });
+      mockIdentity.findUnique.mockResolvedValueOnce({
+        projects: JSON.stringify({ 'proj-1': true, 'proj-2': false }),
+      });
       mockIdentity.update.mockResolvedValue({});
       await removeUserProject(prisma, pub, 'proj-1');
       expect(mockIdentity.update).toHaveBeenCalled();
@@ -170,7 +176,10 @@ describe('Identity service (prisma)', () => {
       const hex = 'cafebabe';
 
       // Mock findFirst to return an active identity
-      mockIdentity.findFirst.mockResolvedValue({ pubkey: pub, is_active: true });
+      mockIdentity.findFirst.mockResolvedValue({
+        pubkey: pub,
+        is_active: true,
+      });
 
       // set private key in the mocked keytar
       await keytar.setPassword('nostrtrack', pub, hex);
@@ -198,7 +207,10 @@ describe('Identity service (prisma)', () => {
       const pub = 'pubnopekey';
 
       // Mock findFirst to return an active identity
-      mockIdentity.findFirst.mockResolvedValue({ pubkey: pub, is_active: true });
+      mockIdentity.findFirst.mockResolvedValue({
+        pubkey: pub,
+        is_active: true,
+      });
 
       // Do NOT set a password in keytar for this pubkey (mock returns null by default)
 

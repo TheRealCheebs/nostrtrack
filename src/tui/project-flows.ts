@@ -4,7 +4,10 @@ import { PrismaClient } from '@prisma/client';
 
 import { createProject } from '../services/project';
 import { saveNewProject, getProjects, updateProject } from '../services/prisma/project';
-import { createAndPublishPrivateProject, createAndPublishProject } from '../services/nostr/projects';
+import {
+  createAndPublishPrivateProject,
+  createAndPublishProject,
+} from '../services/nostr/projects';
 import { formatNostrTimestamp } from '../nostr/helpers';
 import { getAllProjectTicketsFromRelay, getAllProjectsFromRelay } from '../nostr/utils';
 import { userState } from '../state/user-state';
@@ -12,7 +15,6 @@ import { userState } from '../state/user-state';
 import type { Project } from '../interfaces/project';
 
 export async function mainProjectsFlow(prisma: PrismaClient) {
-
   const { action } = await inquirer.prompt([
     {
       type: 'rawlist',
@@ -69,40 +71,45 @@ async function createProjectFlow(prisma: PrismaClient) {
       type: 'input',
       name: 'name',
       message: 'Project name:',
-      validate: input => input.trim() !== '' || 'Project name is required'
+      validate: (input) => input.trim() !== '' || 'Project name is required',
     },
     {
       type: 'input',
       name: 'description',
-      message: 'Project description (optional):'
+      message: 'Project description (optional):',
     },
     {
       type: 'confirm',
       name: 'isPrivate',
       message: 'Make this project private?',
-      default: false
+      default: false,
     },
     // TODO: do this better
     {
       type: 'input',
       name: 'adminUsers',
-      message: 'Add users with admin roles (comma-separated public keys, optional):'
+      message: 'Add users with admin roles (comma-separated public keys, optional):',
     },
     {
       type: 'input',
       name: 'memberUsers',
-      message: 'Add users with read only roles, if project is private. (comma-separated public keys, optional):'
-    }
+      message:
+        'Add users with read only roles, if project is private. (comma-separated public keys, optional):',
+    },
   ]);
 
-  let members: { pubkey: string, role?: string }[] = [];
+  let members: { pubkey: string; role?: string }[] = [];
   if (answers.adminUsers) {
-    const admin = answers.adminUsers.split(',').map((pubkey: string) => ({ pubkey: pubkey.trim(), role: 'admin' }));
-    members = members.concat(admin)
+    const admin = answers.adminUsers
+      .split(',')
+      .map((pubkey: string) => ({ pubkey: pubkey.trim(), role: 'admin' }));
+    members = members.concat(admin);
   }
   if (answers.memberUsers) {
-    const users = answers.memberUsers.split(',').map((pubkey: string) => ({ pubkey: pubkey.trim(), role: 'member' }));
-    members = members.concat(users)
+    const users = answers.memberUsers
+      .split(',')
+      .map((pubkey: string) => ({ pubkey: pubkey.trim(), role: 'member' }));
+    members = members.concat(users);
   }
 
   try {
@@ -111,13 +118,17 @@ async function createProjectFlow(prisma: PrismaClient) {
       userKeys.pubKey,
       answers.description,
       answers.isPrivate,
-      members
+      members,
     );
 
     saveNewProject(prisma, project);
     try {
       if (project.isPrivate) {
-        const privateEvent = await createAndPublishPrivateProject(project, userKeys, project.members);
+        const privateEvent = await createAndPublishPrivateProject(
+          project,
+          userKeys,
+          project.members,
+        );
         project.lastEventId = privateEvent.id;
         project.lastEventCreatedAt = privateEvent.created_at;
       } else {
@@ -127,7 +138,7 @@ async function createProjectFlow(prisma: PrismaClient) {
       }
       updateProject(prisma, project);
     } catch (relayError) {
-      console.warn(" Failed to send project to relay:", relayError)
+      console.warn(' Failed to send project to relay:', relayError);
     }
     console.log(`\nProject created successfully!`);
     console.log(`\tUUID: ${project.uuid}`);
@@ -141,7 +152,7 @@ export async function listProjectsFlow(prisma: PrismaClient) {
   console.log('\nProjects\n');
 
   const pubKey = userState.getPubKey();
-  if (pubKey === "") {
+  if (pubKey === '') {
     console.log('No pubkey found, please load userKeys');
     return;
   }
@@ -152,32 +163,34 @@ export async function listProjectsFlow(prisma: PrismaClient) {
     return;
   }
 
-  console.table(projects.map(p => ({
-    ID: p.uuid.slice(0, 8),
-    Name: p.name,
-    Private: p.is_private ? 'Yes' : 'No'
-  })));
+  console.table(
+    projects.map((p) => ({
+      ID: p.uuid.slice(0, 8),
+      Name: p.name,
+      Private: p.is_private ? 'Yes' : 'No',
+    })),
+  );
 
-  const { action } = await inquirer.prompt([{
-    type: 'rawlist',
-    name: 'action',
-    message: 'Select an action:',
-    choices: [
-      'View Details',
-      'Back to Main Menu'
-    ]
-  }]);
+  const { action } = await inquirer.prompt([
+    {
+      type: 'rawlist',
+      name: 'action',
+      message: 'Select an action:',
+      choices: ['View Details', 'Back to Main Menu'],
+    },
+  ]);
 
   if (action === 'View Details') {
-    const { project_uuid } = await inquirer.prompt([{
-      type: 'rawlist',
-      name: 'project_uuid',
-      message: 'Select a project:',
-      choices: projects.map((project) => ({
-        name: project.name,
-        value: project.uuid,
-      })),
-    },
+    const { project_uuid } = await inquirer.prompt([
+      {
+        type: 'rawlist',
+        name: 'project_uuid',
+        message: 'Select a project:',
+        choices: projects.map((project) => ({
+          name: project.name,
+          value: project.uuid,
+        })),
+      },
     ]);
 
     await getProjectDetails(prisma, project_uuid);
@@ -187,7 +200,7 @@ export async function listProjectsFlow(prisma: PrismaClient) {
 export async function switchProjectsFlow(prisma: PrismaClient) {
   console.log('\nProjects\n');
   const pubKey = userState.getPubKey();
-  if (pubKey === "") {
+  if (pubKey === '') {
     console.log('No pubkey found, please load userKeys');
   }
 
@@ -197,35 +210,37 @@ export async function switchProjectsFlow(prisma: PrismaClient) {
     console.log('No projects found.');
   }
 
-  console.table(projects.map(p => ({
-    ID: p.uuid.slice(0, 8),
-    Name: p.name,
-    Private: p.is_private ? 'Yes' : 'No'
-  })));
+  console.table(
+    projects.map((p) => ({
+      ID: p.uuid.slice(0, 8),
+      Name: p.name,
+      Private: p.is_private ? 'Yes' : 'No',
+    })),
+  );
 
-  const { action } = await inquirer.prompt([{
-    type: 'rawlist',
-    name: 'action',
-    message: 'Select an action:',
-    choices: [
-      'Select Project',
-      'Back to Main Menu'
-    ]
-  }]);
+  const { action } = await inquirer.prompt([
+    {
+      type: 'rawlist',
+      name: 'action',
+      message: 'Select an action:',
+      choices: ['Select Project', 'Back to Main Menu'],
+    },
+  ]);
 
   if (action === 'Back to Main Menu') {
     console.log('Action Canceled, not switching.');
   }
 
-  const { project_uuid } = await inquirer.prompt([{
-    type: 'rawlist',
-    name: 'project_uuid',
-    message: 'Select a project:',
-    choices: projects.map((project) => ({
-      name: project.name,
-      value: project.uuid,
-    })),
-  },
+  const { project_uuid } = await inquirer.prompt([
+    {
+      type: 'rawlist',
+      name: 'project_uuid',
+      message: 'Select a project:',
+      choices: projects.map((project) => ({
+        name: project.name,
+        value: project.uuid,
+      })),
+    },
   ]);
   userState.setActiveProject(project_uuid);
 }
@@ -242,47 +257,46 @@ export async function getProjectDetails(prisma: PrismaClient, projectId: string)
     });
 
     if (!project) {
-      console.log("Project not found.");
+      console.log('Project not found.');
       return;
     }
 
     console.log(`Project: ${project.name}`);
     console.log(`Description: ${project.description}`);
-    console.log(`Private: ${project.is_private ? "Yes" : "No"}`);
+    console.log(`Private: ${project.is_private ? 'Yes' : 'No'}`);
     console.log(`Last Event ID: ${project.last_event_id}`);
     console.log(`Last Time: ${formatNostrTimestamp(project.last_event_created_at)}`);
 
     // List project tickets
-    console.log("Tickets:");
+    console.log('Tickets:');
     if (project.tickets.length > 0) {
       project.tickets.forEach((ticket) => {
         console.log(`\t${ticket.state}: ${ticket.title}`);
       });
     } else {
-      console.log("\tNo tickets available.");
+      console.log('\tNo tickets available.');
     }
-
 
     // If the project is not private, show admin members
     if (!project.is_private) {
-      console.log("Admin Members:");
-      const adminMembers = project.members.filter((member) => member.role === "admin");
+      console.log('Admin Members:');
+      const adminMembers = project.members.filter((member) => member.role === 'admin');
       if (adminMembers.length > 0) {
         adminMembers.forEach((admin) => {
           console.log(`\t- ${admin.pubkey}`);
         });
       } else {
-        console.log("\tNo admin members.");
+        console.log('\tNo admin members.');
       }
     } else {
       // List project members on private projects
-      console.log("Members:");
+      console.log('Members:');
       project.members.forEach((member) => {
         console.log(`\t- ${member.pubkey} (${member.role})`);
       });
     }
   } catch (error) {
-    console.error("Error fetching project details:", error);
+    console.error('Error fetching project details:', error);
   }
 }
 
@@ -291,8 +305,8 @@ async function showAllProjectsOnRelayFlow(): Promise<void> {
     {
       type: 'input',
       name: 'limit',
-      message: 'Number of projects to show'
-    }
+      message: 'Number of projects to show',
+    },
   ]);
 
   const projects: Project[] = await getAllProjectsFromRelay(answers.limit);
@@ -302,7 +316,7 @@ async function showAllProjectsOnRelayFlow(): Promise<void> {
     // Format the date to a readable string
     console.log(`Project: ${project.name}`);
     console.log(`Description: ${project.description}`);
-    console.log(`Private: ${project.isPrivate ? "Yes" : "No"}`);
+    console.log(`Private: ${project.isPrivate ? 'Yes' : 'No'}`);
     console.log(`Last Event ID: ${project.lastEventId}`);
     console.log(`Last Time: ${date.toLocaleString()}`);
 
@@ -318,14 +332,14 @@ async function showAllProjectsOnRelayFlow(): Promise<void> {
 
     // The project is not private, show admin members
     if (!project.isPrivate) {
-      console.log("Admin Members:");
-      const adminMembers = project.members.filter((member) => member.role === "admin");
+      console.log('Admin Members:');
+      const adminMembers = project.members.filter((member) => member.role === 'admin');
       if (adminMembers.length > 0) {
         adminMembers.forEach((admin) => {
           console.log(`\t- ${admin.pubKey}`);
         });
       } else {
-        console.log("\tNo admin members.");
+        console.log('\tNo admin members.');
       }
     }
   });
@@ -333,7 +347,7 @@ async function showAllProjectsOnRelayFlow(): Promise<void> {
 
 async function showAllTicketsInProjectFromRelayFlow(prisma: PrismaClient): Promise<void> {
   const pubKey = userState.getPubKey();
-  if (pubKey === "") {
+  if (pubKey === '') {
     console.log('No pubkey found, please load userKeys');
     return;
   }
@@ -344,48 +358,52 @@ async function showAllTicketsInProjectFromRelayFlow(prisma: PrismaClient): Promi
     return;
   }
 
-  console.table(projects.map(p => ({
-    ID: p.uuid.slice(0, 8),
-    Name: p.name,
-  })));
+  console.table(
+    projects.map((p) => ({
+      ID: p.uuid.slice(0, 8),
+      Name: p.name,
+    })),
+  );
 
-  const { action } = await inquirer.prompt([{
-    type: 'rawlist',
-    name: 'action',
-    message: 'Select an action:',
-    choices: [
-      'Select Project',
-      'Enter Project',
-      'Back to Main Menu'
-    ]
-  }]);
+  const { action } = await inquirer.prompt([
+    {
+      type: 'rawlist',
+      name: 'action',
+      message: 'Select an action:',
+      choices: ['Select Project', 'Enter Project', 'Back to Main Menu'],
+    },
+  ]);
 
   if (action === 'Back to Main Menu') {
     console.log('Action Canceled, not looking up tickets.');
     return;
   }
 
-  let project_uuid: string = "";
+  let project_uuid: string = '';
 
   if (action === 'Select Project') {
-    const { project_uuid: selectedProjectUuid } = await inquirer.prompt([{
-      type: 'rawlist',
-      name: 'project_uuid',
-      message: 'Select a project:',
-      choices: projects.map((project) => ({
-        name: project.name,
-        value: project.uuid,
-      })),
-    }]);
+    const { project_uuid: selectedProjectUuid } = await inquirer.prompt([
+      {
+        type: 'rawlist',
+        name: 'project_uuid',
+        message: 'Select a project:',
+        choices: projects.map((project) => ({
+          name: project.name,
+          value: project.uuid,
+        })),
+      },
+    ]);
     project_uuid = selectedProjectUuid; // Assign the selected project UUID
   }
 
   if (action === 'Enter Project') {
-    const { project_uuid: enteredProjectUuid } = await inquirer.prompt([{
-      type: 'input',
-      name: 'project_uuid',
-      message: 'Input a project:',
-    }]);
+    const { project_uuid: enteredProjectUuid } = await inquirer.prompt([
+      {
+        type: 'input',
+        name: 'project_uuid',
+        message: 'Input a project:',
+      },
+    ]);
     project_uuid = enteredProjectUuid; // Assign the entered project UUID
   }
 

@@ -1,5 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
-import type { Ticket } from '../interfaces/ticket'
+import type { Ticket } from '../interfaces/ticket';
 
 export function createTicket(
   projectUuid: string,
@@ -8,7 +8,7 @@ export function createTicket(
   description: string,
   creatorPubkey: string,
   parentUuid: string,
-  children: string[] = []
+  children: string[] = [],
 ): Ticket {
   const uuid = uuidv4();
   const now = Date.now();
@@ -23,8 +23,8 @@ export function createTicket(
     creatorPubkey: creatorPubkey,
     createdAt: now,
     updatedAt: now,
-    lastEventId: "",
+    lastEventId: '',
     lastEventCreatedAt: now,
-    childrenUuids: children
+    childrenUuids: children,
   } as Ticket;
 }

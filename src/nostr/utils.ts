@@ -1,11 +1,11 @@
-import { generateSecretKey, getPublicKey, nip19, SimplePool } from "nostr-tools"
+import { generateSecretKey, getPublicKey, nip19, SimplePool } from 'nostr-tools';
 import type { NostrEvent } from 'nostr-tools';
-import { NOSTR_PROJECT_KIND, NOSTR_TICKET_KIND } from "../constants";
-import { nostrEventToProject } from "../services/nostr/projects";
-import { nostrEventToTicket } from "../services/nostr/ticket";
-import type { Project } from "../interfaces/project";
-import type { Ticket } from "../interfaces/ticket";
-import type { UserKeys } from "../interfaces/identity";
+import { NOSTR_PROJECT_KIND, NOSTR_TICKET_KIND } from '../constants';
+import { nostrEventToProject } from '../services/nostr/projects';
+import { nostrEventToTicket } from '../services/nostr/ticket';
+import type { Project } from '../interfaces/project';
+import type { Ticket } from '../interfaces/ticket';
+import type { UserKeys } from '../interfaces/identity';
 
 let pool: SimplePool | null = null; // Global pool instance
 let relays: string[] = []; // Global list of relays
@@ -37,22 +37,22 @@ export function createKeys(): UserKeys {
   let userPrivateKey = generateSecretKey();
   const pubKey = getPublicKey(userPrivateKey);
 
-  return { pubKey: pubKey, privateKey: userPrivateKey }
+  return { pubKey: pubKey, privateKey: userPrivateKey };
 }
 
 export function importKeys(nsec: string): UserKeys {
   try {
     const decoded = nip19.decode(nsec);
 
-    if (decoded.type !== "nsec") {
-      throw new Error("Only nsec keys are accepted.");
+    if (decoded.type !== 'nsec') {
+      throw new Error('Only nsec keys are accepted.');
     }
 
-    const pubKey = getPublicKey(decoded.data)
+    const pubKey = getPublicKey(decoded.data);
 
     return { pubKey: pubKey, privateKey: decoded.data };
   } catch (error) {
-    throw new Error("Invalid nsec provided.");
+    throw new Error('Invalid nsec provided.');
   }
 }
 
@@ -67,20 +67,17 @@ export function getPublicName(pubKey: string): string {
     authors: [pubKey],
     kinds: [0],
     limit: 1,
-  }
-  const sub = pool.subscribeMany(relays,
-    filter,
-    {
-      onevent(event) {
-        const profile = JSON.parse(event.content);
-        name = profile.name;
-        sub.close();
-      },
-      oneose() {
-        sub.close();
-      }
-    }
-  );
+  };
+  const sub = pool.subscribeMany(relays, filter, {
+    onevent(event) {
+      const profile = JSON.parse(event.content);
+      name = profile.name;
+      sub.close();
+    },
+    oneose() {
+      sub.close();
+    },
+  });
   // if the userName doesn't come back show the npub
   if (name === '') {
     name = nip19.npubEncode(pubKey);
@@ -92,7 +89,10 @@ export function getNpub(pubkey: string): string {
   return nip19.npubEncode(pubkey);
 }
 
-export function convertForNIP19(userKeys: UserKeys): { nsec: string, npub: string } {
+export function convertForNIP19(userKeys: UserKeys): {
+  nsec: string;
+  npub: string;
+} {
   const nsec = nip19.nsecEncode(userKeys.privateKey);
   const npub = nip19.npubEncode(userKeys.pubKey);
 
@@ -129,19 +129,15 @@ export function closeNostr(): void {
   }
 }
 
-
 export async function getAllProjectsFromRelay(limit: number = 10): Promise<Project[]> {
   if (!pool || relays.length === 0) {
     throw new Error('Nostr is not initialized. Call initNostr() first.');
   }
   try {
-    const events: NostrEvent[] = await pool.querySync(
-      relays,
-      {
-        kinds: [NOSTR_PROJECT_KIND],
-        limit: limit
-      },
-    )
+    const events: NostrEvent[] = await pool.querySync(relays, {
+      kinds: [NOSTR_PROJECT_KIND],
+      limit: limit,
+    });
     const projects: Project[] = [];
 
     events.forEach((event) => {
@@ -157,7 +153,7 @@ export async function getAllProjectsFromRelay(limit: number = 10): Promise<Proje
 
     return projects; // Return the array of projects
   } catch (error) {
-    console.error("Failed to fetch events from any relay:", error);
+    console.error('Failed to fetch events from any relay:', error);
     return [];
   }
 }
@@ -167,13 +163,10 @@ export async function getAllTicketsFromRelay(limit: number = 10): Promise<Ticket
     throw new Error('Nostr is not initialized. Call initNostr() first.');
   }
   try {
-    const events: NostrEvent[] = await pool.querySync(
-      relays,
-      {
-        kinds: [NOSTR_TICKET_KIND],
-        limit: limit,
-      },
-    )
+    const events: NostrEvent[] = await pool.querySync(relays, {
+      kinds: [NOSTR_TICKET_KIND],
+      limit: limit,
+    });
     const tickets: Ticket[] = [];
 
     events.forEach((event) => {
@@ -190,24 +183,24 @@ export async function getAllTicketsFromRelay(limit: number = 10): Promise<Ticket
 
     return tickets; // Return the array of projects
   } catch (error) {
-    console.error("Failed to fetch events from any relay:", error);
+    console.error('Failed to fetch events from any relay:', error);
     return [];
   }
 }
-export async function getAllProjectTicketsFromRelay(projectUuid: string, limit: number = 10): Promise<Ticket[]> {
-  console.log(`getting tickets for ${projectUuid}`)
+export async function getAllProjectTicketsFromRelay(
+  projectUuid: string,
+  limit: number = 10,
+): Promise<Ticket[]> {
+  console.log(`getting tickets for ${projectUuid}`);
   if (!pool || relays.length === 0) {
     throw new Error('Nostr is not initialized. Call initNostr() first.');
   }
   try {
-    const events: NostrEvent[] = await pool.querySync(
-      relays,
-      {
-        kinds: [NOSTR_TICKET_KIND],
-        limit: limit,
-        '#project-uuid': [projectUuid],
-      },
-    )
+    const events: NostrEvent[] = await pool.querySync(relays, {
+      kinds: [NOSTR_TICKET_KIND],
+      limit: limit,
+      '#project-uuid': [projectUuid],
+    });
     const tickets: Ticket[] = [];
 
     events.forEach((event) => {
@@ -223,7 +216,7 @@ export async function getAllProjectTicketsFromRelay(projectUuid: string, limit: 
 
     return tickets; // Return the array of projects
   } catch (error) {
-    console.error("Failed to fetch events from any relay:", error);
+    console.error('Failed to fetch events from any relay:', error);
     return [];
   }
 }

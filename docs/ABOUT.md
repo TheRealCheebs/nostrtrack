@@ -1,4 +1,3 @@
-
 # Project description
 
 ## Problem Statement
@@ -47,4 +46,3 @@ NostrTrack is a lightweight, Nostr-native project tracking system designed speci
 - **Open Source Contribution:** Code will be MIT-licensed, fostering community-driven improvements
 - **Decentralized Workflows:** Paves the way for other Nostr-based collaboration tools (e.g., docs, wikis)
 - **Global Accessibility:** Empowers teams in regions with internet restrictions or limited infrastructure
-

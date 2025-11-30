@@ -62,8 +62,8 @@
 
 // userCommand
 //   .command('list')
-//   .description('List all users')  
-//   .action(() => { 
+//   .description('List all users')
+//   .action(() => {
 //     getAllIdentities(prisma).then((identities: PrismaIdentity[]) => {
 //         if (identities.length === 0) {
 //             console.log(chalk.yellow('No users found'));
@@ -76,7 +76,6 @@
 //         });
 //     });
 // });
-
 
 // userCommand
 //   .command('remove')

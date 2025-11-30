@@ -1,5 +1,11 @@
 import { PrismaClient } from '@prisma/client';
-import { subscribeToProjectUpdates, subscribeToPrivateProjectUpdates, addSubscription, subscribeToPrivateTicketUpdates, subscribeToTicketUpdates } from '../../nostr/sync';
+import {
+  subscribeToProjectUpdates,
+  subscribeToPrivateProjectUpdates,
+  addSubscription,
+  subscribeToPrivateTicketUpdates,
+  subscribeToTicketUpdates,
+} from '../../nostr/sync';
 import { updateProject, getTicketUuidsByProjectUuid } from '../../services/prisma/project';
 import { updateTicket } from '../../services/prisma/ticket';
 import { getUserProjects } from '../../services/prisma/identity';
@@ -8,7 +14,11 @@ import type { SubCloser } from 'nostr-tools/lib/types/abstract-pool';
 import type { Subscription } from '../../nostr/sync';
 import type { UserKeys } from '../../interfaces/identity';
 
-export async function subscribeAllForUser(prisma: PrismaClient, userKeys: UserKeys, relays: string[]): Promise<void> {
+export async function subscribeAllForUser(
+  prisma: PrismaClient,
+  userKeys: UserKeys,
+  relays: string[],
+): Promise<void> {
   // use the list projects to iterate through and subscribe to all current projects
   const projects = await getUserProjects(prisma, userKeys.pubKey);
   for (const [projectUuid, isPrivate] of projects) {
@@ -28,10 +38,9 @@ export async function subscribeAllForUser(prisma: PrismaClient, userKeys: UserKe
       const ppsub: Subscription = {
         id: projectUuid,
         sub: ppsc,
-      }
+      };
       addSubscription(ppsub);
-    }
-    else {
+    } else {
       const psc: SubCloser = subscribeToProjectUpdates(
         relays,
         projectUuid,
@@ -46,12 +55,12 @@ export async function subscribeAllForUser(prisma: PrismaClient, userKeys: UserKe
       const psub: Subscription = {
         id: projectUuid,
         sub: psc,
-      }
+      };
       addSubscription(psub);
     }
 
     const allTickets = await getTicketUuidsByProjectUuid(prisma, projectUuid);
-    allTickets.forEach(ticketUuid => {
+    allTickets.forEach((ticketUuid) => {
       if (isPrivate) {
         const ptsc: SubCloser = subscribeToPrivateTicketUpdates(
           relays,
@@ -66,7 +75,7 @@ export async function subscribeAllForUser(prisma: PrismaClient, userKeys: UserKe
         const ptsub: Subscription = {
           id: projectUuid,
           sub: ptsc,
-        }
+        };
         addSubscription(ptsub);
       } else {
         const tsc: SubCloser = subscribeToTicketUpdates(
@@ -81,9 +90,9 @@ export async function subscribeAllForUser(prisma: PrismaClient, userKeys: UserKe
         const tsub: Subscription = {
           id: projectUuid,
           sub: tsc,
-        }
+        };
         addSubscription(tsub);
       }
-    })
+    });
   }
 }

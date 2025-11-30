@@ -1,6 +1,6 @@
 import { nip44, finalizeEvent } from 'nostr-tools';
 import { randomBytes } from '@noble/hashes/utils';
-import { NOSTR_GIFT_WRAP_KIND, NOSTR_PROJECT_KIND } from '../../constants'
+import { NOSTR_GIFT_WRAP_KIND, NOSTR_PROJECT_KIND } from '../../constants';
 import { publishToRelays } from '../../nostr/utils';
 
 import type { Project, ProjectMember } from '../../interfaces/project';
@@ -10,36 +10,41 @@ import type { NostrEvent, EventTemplate } from 'nostr-tools';
 export async function createAndPublishPrivateProject(
   project: Project,
   userKeys: UserKeys,
-  projectMembers: ProjectMember[]
+  projectMembers: ProjectMember[],
 ): Promise<NostrEvent> {
-
   // Create a rumor (NIP-17)
-  const rumor = finalizeEvent({
-    kind: NOSTR_PROJECT_KIND,
-    created_at: Math.floor(Date.now() / 1000),
-    content: JSON.stringify(project),
-    tags: [
-      ['d', project.uuid],
-      ['name', project.name],
-      ['private', 'true'],
-    ]
-  }, userKeys.privateKey);
+  const rumor = finalizeEvent(
+    {
+      kind: NOSTR_PROJECT_KIND,
+      created_at: Math.floor(Date.now() / 1000),
+      content: JSON.stringify(project),
+      tags: [
+        ['d', project.uuid],
+        ['name', project.name],
+        ['private', 'true'],
+      ],
+    },
+    userKeys.privateKey,
+  );
 
   // Create gift wraps for each member
   const wraps = [];
   for (const member of projectMembers) {
-    const converKey = nip44.getConversationKey(userKeys.privateKey, member.pubKey);  // Ensure conversation key exists
+    const converKey = nip44.getConversationKey(userKeys.privateKey, member.pubKey); // Ensure conversation key exists
     const nonce = randomBytes(24); // 24 random bytes
-    const wrap = finalizeEvent({
-      kind: NOSTR_GIFT_WRAP_KIND,
-      created_at: Math.floor(Date.now() / 1000),
-      content: nip44.encrypt(JSON.stringify(rumor), converKey, nonce),
-      tags: [
-        ['p', member.pubKey],
-        ['project-uuid', project.uuid],
-        ['type', 'project'],
-      ]
-    }, userKeys.privateKey);
+    const wrap = finalizeEvent(
+      {
+        kind: NOSTR_GIFT_WRAP_KIND,
+        created_at: Math.floor(Date.now() / 1000),
+        content: nip44.encrypt(JSON.stringify(rumor), converKey, nonce),
+        tags: [
+          ['p', member.pubKey],
+          ['project-uuid', project.uuid],
+          ['type', 'project'],
+        ],
+      },
+      userKeys.privateKey,
+    );
     wraps.push(wrap);
   }
 
@@ -55,39 +60,44 @@ export async function updateAndPublishPrivateProject(
   userKeys: UserKeys,
   projectMembers: ProjectMember[],
   updatedTag: string,
-  propertyTag: string
+  propertyTag: string,
 ): Promise<NostrEvent> {
-
   // Create a rumor (NIP-17)
-  const rumor = finalizeEvent({
-    kind: NOSTR_PROJECT_KIND,
-    created_at: Math.floor(Date.now() / 1000),
-    content: JSON.stringify(project),
-    tags: [
-      ['d', project.uuid],
-      ['name', project.name],
-      ['private', 'true'],
-      ['updated', updatedTag],
-      ['property', propertyTag],
-      ['e', project.lastEventId],
-    ]
-  }, userKeys.privateKey);
+  const rumor = finalizeEvent(
+    {
+      kind: NOSTR_PROJECT_KIND,
+      created_at: Math.floor(Date.now() / 1000),
+      content: JSON.stringify(project),
+      tags: [
+        ['d', project.uuid],
+        ['name', project.name],
+        ['private', 'true'],
+        ['updated', updatedTag],
+        ['property', propertyTag],
+        ['e', project.lastEventId],
+      ],
+    },
+    userKeys.privateKey,
+  );
 
   // Create gift wraps for each member
   const wraps = [];
   for (const member of projectMembers) {
-    const converKey = nip44.getConversationKey(userKeys.privateKey, member.pubKey);  // Ensure conversation key exists
+    const converKey = nip44.getConversationKey(userKeys.privateKey, member.pubKey); // Ensure conversation key exists
     const nonce = randomBytes(24); // 24 random bytes
-    const wrap = finalizeEvent({
-      kind: NOSTR_GIFT_WRAP_KIND,
-      created_at: Math.floor(Date.now() / 1000),
-      content: nip44.encrypt(JSON.stringify(rumor), converKey, nonce),
-      tags: [
-        ['p', member.pubKey],
-        ['project-uuid', project.uuid],
-        ['type', 'project'],
-      ]
-    }, userKeys.privateKey);
+    const wrap = finalizeEvent(
+      {
+        kind: NOSTR_GIFT_WRAP_KIND,
+        created_at: Math.floor(Date.now() / 1000),
+        content: nip44.encrypt(JSON.stringify(rumor), converKey, nonce),
+        tags: [
+          ['p', member.pubKey],
+          ['project-uuid', project.uuid],
+          ['type', 'project'],
+        ],
+      },
+      userKeys.privateKey,
+    );
     wraps.push(wrap);
   }
 
@@ -101,9 +111,8 @@ export async function updateAndPublishPrivateProject(
 
 export async function createAndPublishProject(
   project: Project,
-  userKeys: UserKeys
+  userKeys: UserKeys,
 ): Promise<NostrEvent> {
-
   const eventTemplate: EventTemplate = {
     kind: NOSTR_PROJECT_KIND,
     created_at: Math.floor(Date.now() / 1000),
@@ -112,7 +121,7 @@ export async function createAndPublishProject(
       ['d', project.uuid],
       ['name', project.name],
       ['private', 'false'],
-    ]
+    ],
   };
 
   const signed = finalizeEvent(eventTemplate, userKeys.privateKey);
@@ -124,9 +133,8 @@ export async function updateAndPublishProject(
   project: Project,
   userKeys: UserKeys,
   updatedTag: string,
-  propertyTag: string
+  propertyTag: string,
 ): Promise<NostrEvent> {
-
   const eventTemplate: EventTemplate = {
     kind: NOSTR_PROJECT_KIND,
     created_at: Math.floor(Date.now() / 1000),
@@ -138,7 +146,7 @@ export async function updateAndPublishProject(
       ['updated', updatedTag],
       ['property', propertyTag],
       ['e', project.lastEventId],
-    ]
+    ],
   };
 
   const signed = finalizeEvent(eventTemplate, userKeys.privateKey);
@@ -168,7 +176,7 @@ export function nostrEventToProject(event: NostrEvent): Project {
 
 export async function getPrivateProject(
   rumorEvent: NostrEvent,
-  userKeys: UserKeys
+  userKeys: UserKeys,
 ): Promise<Project> {
   // Extract the encrypted content and nonce from the rumor
   const encryptedContent = rumorEvent.content;

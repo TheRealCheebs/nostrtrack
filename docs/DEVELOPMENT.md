@@ -93,7 +93,6 @@ sudo apt-get install build-essential libsecret-1-dev
 { "relays": ["wss://relay.damus.io", "wss://nostr-pub.wellorder.net"] }
 ```
 
-
 ## Security notes
 
 - Do not commit `.env` or private keys to source control. A `.env.example` is included to show the expected variables.

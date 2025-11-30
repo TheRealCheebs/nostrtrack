@@ -2,7 +2,6 @@
 
 NostrTrack is a Nostr-native, terminal-first project tracker built for small distributed teams. It treats Nostr events as the canonical, censorship-resistant event stream and uses a local Prisma + SQLite database as an optional offline cache and working set. Identity is pubkey-first (Nostr keys), and projects/tickets use UUIDs so they can be created and referenced safely across disconnected peers.
 
-
 ## Quick summary
 
 - Canonical store: Nostr relays — signed events are the source of truth and carry provenance (pubkey, sig).
@@ -11,12 +10,11 @@ NostrTrack is a Nostr-native, terminal-first project tracker built for small dis
 - Identifiers: UUIDs for projects and tickets to ensure distributed uniqueness across peers.
 - UX: TUI-first CLI workflow for speed and privacy; optional locally hosted web UI available.
 
-
 ## Development & contributing
 
 The full development quickstart, environment notes, and contributor guidelines live in separate docs to keep this `README` focused.
 
- - [Development quickstart](./docs/DEVELOPMENT.md): commands to install, generate Prisma client, run the TUI, and reset the local DB.
+- [Development quickstart](./docs/DEVELOPMENT.md): commands to install, generate Prisma client, run the TUI, and reset the local DB.
 
 - [Contribution guidelines and commit conventions](./docs/CONTRIBUTING.md): branch/commit guidance, testing/build checks, and Conventional Commits instructions.
 
@@ -54,7 +52,6 @@ npm run tui
 ```
 
 This launches the interactive TUI implemented under `src/tui` and wired from `src/app/main.ts`.
-
 
 ## Getting started
 

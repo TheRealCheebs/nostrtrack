@@ -1,6 +1,5 @@
 import type { Ticket as PrismaTicket } from '@prisma/client';
 
-
 // Domain model for app logic and Nostr payloads
 export interface TicketData {
   uuid: string;
@@ -34,7 +33,7 @@ export function prismaTicketToData(ticket: PrismaTicket): TicketData {
     updated_at: Number(ticket.updated_at),
     last_event_id: ticket.last_event_id,
     last_event_created_at: Number(ticket.last_event_created_at),
-    children_uuids: childrenUuids
+    children_uuids: childrenUuids,
   };
 }
 
@@ -52,7 +51,6 @@ export function ticketDataToPrisma(data: TicketData): PrismaTicket {
     updated_at: BigInt(data.updated_at),
     last_event_id: data.last_event_id,
     last_event_created_at: BigInt(data.last_event_created_at),
-    children_uuids: data.children_uuids
+    children_uuids: data.children_uuids,
   };
 }
-

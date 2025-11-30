@@ -8,7 +8,7 @@ import { mainTicketsFlow } from '../tui/ticket-flows.js';
 import { mainSettingsFlow } from '../tui/settings-flows.js';
 import { clearScreen, showHeader, pauseBeforeContinue } from '../tui/ui-utils.js';
 import { closeAllSubscriptions } from '../nostr/sync.js';
-import { userState } from "../state/user-state";
+import { userState } from '../state/user-state';
 
 import { getActiveUserKeys } from '../services/prisma/identity.js';
 import { listRelays } from '../settings.js';
@@ -33,7 +33,6 @@ async function main() {
       if (running) {
         await pauseBeforeContinue();
       }
-
     } catch (error) {
       console.error('An error occurred:', error);
       await pauseBeforeContinue();
@@ -42,7 +41,7 @@ async function main() {
 
   // Cleanup before exit
   await cleanup();
-  console.log('\n👋 Goodbye!');
+  console.log('\nGoodbye!');
   process.exit(0);
 }
 
@@ -54,13 +53,7 @@ async function mainMenu(prisma: PrismaClient): Promise<boolean> {
       type: 'rawlist',
       name: 'category',
       message: 'Select a category:',
-      choices: [
-        'Users',
-        'Projects',
-        'Tickets',
-        'Settings',
-        'Exit',
-      ],
+      choices: ['Users', 'Projects', 'Tickets', 'Settings', 'Exit'],
     },
   ]);
 
@@ -82,7 +75,6 @@ async function mainMenu(prisma: PrismaClient): Promise<boolean> {
   }
   return keepRunning;
 }
-
 
 async function initializeApp(prisma: PrismaClient): Promise<boolean> {
   console.log('Initializing application...');
@@ -109,7 +101,7 @@ async function initializeApp(prisma: PrismaClient): Promise<boolean> {
   subscribeAllForUser(prisma, userKeys, relays);
 
   // Any other initialization tasks
-  console.log('✅ Application initialized');
+  console.log('Application initialized');
   return true;
 }
 
@@ -119,7 +111,7 @@ async function cleanup() {
   closeAllSubscriptions();
 
   // Any other cleanup tasks
-  console.log('✅ Cleanup complete');
+  console.log('Cleanup complete');
 }
 
 async function initializeDatabase(prisma: PrismaClient) {
@@ -144,7 +136,7 @@ async function initializeDatabase(prisma: PrismaClient) {
 }
 
 // Start the application
-main().catch(error => {
+main().catch((error) => {
   console.error('Fatal error:', error);
   process.exit(1);
 });
