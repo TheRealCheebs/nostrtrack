@@ -1,6 +1,6 @@
 import inquirer from 'inquirer';
 import chalk from 'chalk';
-import { listRelays, modifyRelays } from '../settings.js';
+import { listRelays, modifyRelays } from '../settings';
 
 export async function mainSettingsFlow() {
   const { action } = await inquirer.prompt([

@@ -1,4 +1,4 @@
-import { getPublicName } from "@nostr/utils";
+import { getPublicName } from "../nostr/utils";
 
 type UserKeys = { pubKey: string; privateKey: Uint8Array } | null;
 

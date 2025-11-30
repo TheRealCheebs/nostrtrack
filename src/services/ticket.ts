@@ -1,5 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
-import type { Ticket } from '@interfaces/ticket.js'
+import type { Ticket } from '../interfaces/ticket'
 
 export function createTicket(
   projectUuid: string,

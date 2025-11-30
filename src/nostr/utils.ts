@@ -1,11 +1,11 @@
 import { generateSecretKey, getPublicKey, nip19, SimplePool } from "nostr-tools"
 import type { NostrEvent } from 'nostr-tools';
-import { NOSTR_PROJECT_KIND, NOSTR_TICKET_KIND } from "src/constants";
-import { nostrEventToProject } from "@services/nostr/projects.js";
-import { nostrEventToTicket } from "@services/nostr/ticket.js";
-import type { Project } from "@interfaces/project.js";
-import type { Ticket } from "@interfaces/ticket.js";
-import type { UserKeys } from "@interfaces/identity.js";
+import { NOSTR_PROJECT_KIND, NOSTR_TICKET_KIND } from "../constants";
+import { nostrEventToProject } from "../services/nostr/projects";
+import { nostrEventToTicket } from "../services/nostr/ticket";
+import type { Project } from "../interfaces/project";
+import type { Ticket } from "../interfaces/ticket";
+import type { UserKeys } from "../interfaces/identity";
 
 let pool: SimplePool | null = null; // Global pool instance
 let relays: string[] = []; // Global list of relays

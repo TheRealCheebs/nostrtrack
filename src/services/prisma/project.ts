@@ -1,6 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import type { Project as PrismaProject, ProjectMember as PrismaProjectMember } from '@prisma/client';
-import type { Project, ProjectMember } from '@interfaces/project.js';
+import type { Project, ProjectMember } from '../../interfaces/project';
 
 export async function saveNewProject(
   prisma: PrismaClient,

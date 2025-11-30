@@ -1,13 +1,13 @@
 import inquirer from 'inquirer';
-import { createTicket } from '@services/ticket.js';
-import { saveNewTicket, updateTicketNostrEvent } from '@services/prisma/ticket';
-import { createAndPublishPrivateTicket, createAndPublishTicket } from '@services/nostr/ticket';
-import { updateAndPublishPrivateProject, updateAndPublishProject } from '@services/nostr/projects';
-import { addNewTicketToProject, getProjectById, prismaToProject, updateProjectNostrEvent } from '@services/prisma/project';
-import { getAllTicketsFromRelay } from '@nostr/utils.js';
+import { createTicket } from '../services/ticket';
+import { saveNewTicket, updateTicketNostrEvent } from '../services/prisma/ticket';
+import { createAndPublishPrivateTicket, createAndPublishTicket } from '../services/nostr/ticket';
+import { updateAndPublishPrivateProject, updateAndPublishProject } from '../services/nostr/projects';
+import { addNewTicketToProject, getProjectById, prismaToProject, updateProjectNostrEvent } from '../services/prisma/project';
+import { getAllTicketsFromRelay } from '../nostr/utils';
 import { PrismaClient } from '@prisma/client';
-import { userState } from '@state/user-state';
-import type { Ticket } from '@interfaces/ticket';
+import { userState } from '../state/user-state';
+import type { Ticket } from '../interfaces/ticket';
 
 export async function mainTicketsFlow(prisma: PrismaClient) {
   const { action } = await inquirer.prompt([

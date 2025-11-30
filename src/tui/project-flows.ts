@@ -2,14 +2,14 @@
 import inquirer from 'inquirer';
 import { PrismaClient } from '@prisma/client';
 
-import { createProject } from '@services/project.ts';
-import { saveNewProject, getProjects, updateProject } from '@services/prisma/project.js';
-import { createAndPublishPrivateProject, createAndPublishProject } from '@services/nostr/projects.js';
-import { formatNostrTimestamp } from 'src/nostr/helpers';
-import { getAllProjectTicketsFromRelay, getAllProjectsFromRelay } from 'src/nostr/utils';
-import { userState } from '@state/user-state';
+import { createProject } from '../services/project';
+import { saveNewProject, getProjects, updateProject } from '../services/prisma/project';
+import { createAndPublishPrivateProject, createAndPublishProject } from '../services/nostr/projects';
+import { formatNostrTimestamp } from '../nostr/helpers';
+import { getAllProjectTicketsFromRelay, getAllProjectsFromRelay } from '../nostr/utils';
+import { userState } from '../state/user-state';
 
-import type { Project } from '@interfaces/project';
+import type { Project } from '../interfaces/project';
 
 export async function mainProjectsFlow(prisma: PrismaClient) {
 

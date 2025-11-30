@@ -1,8 +1,8 @@
 import keytar from 'keytar';
-import { bytesToHex, hexToBytes } from '@noble/hashes/utils' // already an installed dependency
+import { bytesToHex, hexToBytes } from '@noble/hashes/utils'
 import { PrismaClient } from '@prisma/client';
 import type { Identity as PrismaIdentity } from '@prisma/client';
-import type { UserKeys } from '@interfaces/identity.js';
+import type { UserKeys } from '../../interfaces/identity';
 
 const SERVICE_NAME = 'nostrtrack';
 

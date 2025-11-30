@@ -1,11 +1,11 @@
 import { nip44, finalizeEvent } from 'nostr-tools';
-import { randomBytes } from '@noble/hashes/utils'; // or use crypto.getRandomValues in browser
-import { NOSTR_GIFT_WRAP_KIND, NOSTR_TICKET_KIND } from '../../constants.ts'
-import { publishToRelays } from '../../nostr/utils.js';
+import { randomBytes } from '@noble/hashes/utils';
+import { NOSTR_GIFT_WRAP_KIND, NOSTR_TICKET_KIND } from '../../constants'
+import { publishToRelays } from '../../nostr/utils';
 
-import type { Ticket } from '@interfaces/ticket.js';
-import type { ProjectMember } from '@interfaces/project.js';
-import type { UserKeys } from '@interfaces/identity.js';
+import type { Ticket } from '../../interfaces/ticket';
+import type { ProjectMember } from '../../interfaces/project';
+import type { UserKeys } from '../../interfaces/identity';
 import type { NostrEvent, EventTemplate } from 'nostr-tools';
 
 export async function createAndPublishPrivateTicket(

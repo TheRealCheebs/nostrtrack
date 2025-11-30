@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { createKeys } from '@nostr/utils.js';
+import { createKeys } from '../src/nostr/utils';
 
 let responses: any[] = [];
 // Mock keytar with an in-memory map
@@ -45,13 +45,12 @@ vi.mock('@noble/hashes/utils', () => {
 import keytar from 'keytar';
 import {
   createIdentity,
-  importIdentity,
   getPrivateKey,
   addOrUpdateUserProject,
   getUserProjects,
   removeUserProject,
   getActiveUserKeys,
-} from '@services/prisma/identity';
+} from '../src/services/prisma/identity';
 
 // Create a lightweight mock prisma that exposes the methods the identity service expects
 function makeMockPrisma() {

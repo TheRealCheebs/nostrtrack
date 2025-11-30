@@ -1,5 +1,4 @@
 import { SimplePool } from 'nostr-tools';
-//import type { Event } from 'nostr-tools/lib/types';
 
 export async function getLastNostrEvents(relays: string[], kinds: number[], limit: number = 10) {
   const pool = new SimplePool();

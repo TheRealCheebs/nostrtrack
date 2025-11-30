@@ -1,12 +1,12 @@
 import { PrismaClient } from '@prisma/client';
-import { subscribeToProjectUpdates, subscribeToPrivateProjectUpdates, addSubscription, subscribeToPrivateTicketUpdates, subscribeToTicketUpdates } from '@nostr/sync.js';
-import { updateProject, getTicketUuidsByProjectUuid } from '@services/prisma/project.js';
-import { updateTicket } from '@services/prisma/ticket.js';
-import { getUserProjects } from '@services/prisma/identity.js';
+import { subscribeToProjectUpdates, subscribeToPrivateProjectUpdates, addSubscription, subscribeToPrivateTicketUpdates, subscribeToTicketUpdates } from '../../nostr/sync';
+import { updateProject, getTicketUuidsByProjectUuid } from '../../services/prisma/project';
+import { updateTicket } from '../../services/prisma/ticket';
+import { getUserProjects } from '../../services/prisma/identity';
 
 import type { SubCloser } from 'nostr-tools/lib/types/abstract-pool';
-import type { Subscription } from '@nostr/sync.js';
-import type { UserKeys } from '@interfaces/identity';
+import type { Subscription } from '../../nostr/sync';
+import type { UserKeys } from '../../interfaces/identity';
 
 export async function subscribeAllForUser(prisma: PrismaClient, userKeys: UserKeys, relays: string[]): Promise<void> {
   // use the list projects to iterate through and subscribe to all current projects

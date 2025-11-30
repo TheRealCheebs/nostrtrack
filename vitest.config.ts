@@ -1,19 +1,6 @@
-import { resolve } from 'path';
 import { defineConfig, configDefaults } from 'vitest/config';
 
 export default defineConfig({
-  // Mirror tsconfig path aliases so tests can import using '@services/..' etc.
-  resolve: {
-    alias: {
-      '@services': resolve(__dirname, 'src/services'),
-      '@interfaces': resolve(__dirname, 'src/interfaces'),
-      '@utils': resolve(__dirname, 'src/utils'),
-      '@tui': resolve(__dirname, 'src/tui'),
-      '@nostr': resolve(__dirname, 'src/nostr'),
-      '@state': resolve(__dirname, 'src/state'),
-    },
-  },
-
   test: {
     environment: 'node',
     globals: true,

@@ -2,19 +2,19 @@ import inquirer from 'inquirer';
 import { PrismaClient } from '@prisma/client';
 import { execSync } from 'child_process';
 
-import { mainUsersFlow, noUserFlow } from '@tui/user-flows.js';
-import { mainProjectsFlow } from '@tui/project-flows.js';
-import { mainTicketsFlow } from '@tui/ticket-flows.js';
-import { mainSettingsFlow } from '@tui/settings-flows.js';
-import { clearScreen, showHeader, pauseBeforeContinue } from '@tui/ui-utils.js';
-import { closeAllSubscriptions } from '@nostr/sync.js';
-import { userState } from "@state/user-state";
+import { mainUsersFlow, noUserFlow } from '../tui/user-flows';
+import { mainProjectsFlow } from '../tui/project-flows.js';
+import { mainTicketsFlow } from '../tui/ticket-flows.js';
+import { mainSettingsFlow } from '../tui/settings-flows.js';
+import { clearScreen, showHeader, pauseBeforeContinue } from '../tui/ui-utils.js';
+import { closeAllSubscriptions } from '../nostr/sync.js';
+import { userState } from "../state/user-state";
 
-import { getActiveUserKeys } from '@services/prisma/identity.js';
+import { getActiveUserKeys } from '../services/prisma/identity.js';
 import { listRelays } from '../settings.js';
 import { initNostr } from '../nostr/utils.js';
 
-import { subscribeAllForUser } from '@services/prisma/subscribe.js';
+import { subscribeAllForUser } from '../services/prisma/subscribe.js';
 
 // Main application loop
 async function main() {

@@ -1,5 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
-import type { Project } from '../interfaces/project.js';
+import type { Project } from '../interfaces/project';
 
 export function createProject(
   name: string,

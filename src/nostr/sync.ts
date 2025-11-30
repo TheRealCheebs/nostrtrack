@@ -1,12 +1,12 @@
 import { SimplePool } from 'nostr-tools';
 import type { Event } from 'nostr-tools/lib/types';
 import type { SubCloser } from 'nostr-tools/lib/types/abstract-pool';
-import { NOSTR_GIFT_WRAP_KIND, NOSTR_PROJECT_KIND, NOSTR_TICKET_KIND } from './../constants.ts';
-import { nostrEventToProject, getPrivateProject } from '@services/nostr/projects.js';
-import { nostrEventToTicket, getPrivateTicket } from '@services/nostr/ticket.js';
-import type { Project } from '@interfaces/project.js';
-import type { Ticket } from '@interfaces/ticket.js';
-import type { UserKeys } from '@interfaces/identity.js';
+import { NOSTR_GIFT_WRAP_KIND, NOSTR_PROJECT_KIND, NOSTR_TICKET_KIND } from '../constants';
+import { nostrEventToProject, getPrivateProject } from '../services/nostr/projects';
+import { nostrEventToTicket, getPrivateTicket } from '../services/nostr/ticket';
+import type { Project } from '../interfaces/project';
+import type { Ticket } from '../interfaces/ticket';
+import type { UserKeys } from '../interfaces/identity';
 
 
 export type Subscription = {

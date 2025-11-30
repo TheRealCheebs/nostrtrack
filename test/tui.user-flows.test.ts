@@ -16,7 +16,7 @@ vi.mock('inquirer', () => {
 });
 
 // Mock the identity service used by the TUI
-vi.mock('@services/prisma/identity.js', () => ({
+vi.mock('../src/services/prisma/identity', () => ({
   createIdentity: vi.fn(),
   importIdentity: vi.fn(),
   getPrivateKey: vi.fn(),
@@ -27,13 +27,14 @@ vi.mock('@services/prisma/identity.js', () => ({
 }));
 
 // Mock nostr utils used by exportUser
-vi.mock('@nostr/utils', () => ({
+vi.mock('../src/nostr/utils', () => ({
   convertForNIP19: vi.fn((keys: any) => ({ npub: 'npub', nsec: 'nsec' })),
   createKeys: vi.fn(() => ({ pubKey: 'mockPubKey', privateKey: Uint8Array.from([1, 2, 3]) })),
   getPublicName: vi.fn((pubKey: string) => `mockNameFor:${pubKey}`),
+  getNpub: vi.fn((pubKey: string) => `mockNpubFor:${pubKey}`),
 }));
 
-import * as identity from '@services/prisma/identity.js';
+import * as identity from '../src/services/prisma/identity';
 import { mainUsersFlow, noUserFlow } from '../src/tui/user-flows';
 
 beforeEach(() => {

@@ -13,8 +13,8 @@ export interface TicketData {
   owner_pubkey: string;
   created_at: number;
   updated_at: number;
-  last_event_id?: string | null;
   last_event_created_at: number;
+  last_event_id: string;
   children_uuids: string[]; // list of child ticket UUIDs
 }
 
@@ -29,10 +29,10 @@ export function prismaTicketToData(ticket: PrismaTicket): TicketData {
     description: ticket.description,
     state: ticket.state,
     parent_uuid: ticket.parent_uuid ?? null,
-    owner_pubkey: ticket.owner_pubkey,
+    owner_pubkey: ticket.creator_pubkey,
     created_at: Number(ticket.created_at),
     updated_at: Number(ticket.updated_at),
-    last_event_id: ticket.last_event_id ?? null,
+    last_event_id: ticket.last_event_id,
     last_event_created_at: Number(ticket.last_event_created_at),
     children_uuids: childrenUuids
   };
@@ -47,10 +47,10 @@ export function ticketDataToPrisma(data: TicketData): PrismaTicket {
     state: data.state,
     description: data.description,
     parent_uuid: data.parent_uuid,
-    owner_pubkey: data.owner_pubkey,
+    creator_pubkey: data.owner_pubkey,
     created_at: BigInt(data.created_at),
     updated_at: BigInt(data.updated_at),
-    last_event_id: data.last_event_id ?? null,
+    last_event_id: data.last_event_id,
     last_event_created_at: BigInt(data.last_event_created_at),
     children_uuids: data.children_uuids
   };
