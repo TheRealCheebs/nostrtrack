@@ -1,4 +1,8 @@
 import inquirer from 'inquirer';
+import { rawlist, input, confirm } from '@inquirer/prompts';
+import { type PrismaClient } from '@prisma/client';
+
+import chalk from 'chalk';
 import { createTicket } from '../services/ticket';
 import { saveNewTicket, updateTicketNostrEvent } from '../services/prisma/ticket';
 import { createAndPublishPrivateTicket, createAndPublishTicket } from '../services/nostr/ticket';
@@ -13,151 +17,143 @@ import {
   updateProjectNostrEvent,
 } from '../services/prisma/project';
 import { getAllTicketsFromRelay } from '../nostr/utils';
-import { PrismaClient } from '@prisma/client';
 import { userState } from '../state/user-state';
 import type { Ticket } from '../interfaces/ticket';
 
 export async function mainTicketsFlow(prisma: PrismaClient) {
-  const { action } = await inquirer.prompt([
-    {
-      type: 'rawlist',
-      name: 'action',
-      message: 'Ticket Actions:',
-      choices: [
-        'Create Ticket',
-        'Edit Ticket',
-        'Delete Ticket',
-        'Move Ticket',
-        'List Tickets',
-        'Show All from Relay',
-        'Back to Main Menu',
-      ],
-    },
-  ]);
-
-  switch (action) {
-    case 'Create Ticket':
+  const TICKET_OPTIONS = [
+    'Create Ticket',
+    'Edit Ticket',
+    'Delete Ticket',
+    'Move Ticket',
+    'List Ticket',
+    'Show All from Relay',
+    'Back to Main Menu',
+  ] as const;
+  type Action = (typeof TICKET_OPTIONS)[number];
+  const ticketActions: Record<Action, (prisma: PrismaClient) => Promise<void>> = {
+    'Create Ticket': async (prisma) => {
       // in public project start state is unverified, or member in private
       await createTicketFlow(prisma);
-      break;
-    case 'Edit Ticket':
+    },
+    'Edit Ticket': async () => {
       // must be admin in public project, or member in private
       console.log('Edit ticket not done...');
-      break;
-    case 'Delete Ticket':
+    },
+    'Delete Ticket': async () => {
       // must be admin in public project, or member in private
       console.log('Delete ticket not done...');
-      break;
-    case 'Move Ticket':
+    },
+    'Move Ticket': async () => {
       // must be admin in public project, or member in private
       console.log('Move ticket not done...');
-      break;
-    case 'List Tickets':
+    },
+    'List Ticket': async () => {
       console.log('List ticket not done...');
-      break;
-    case 'Show All from Relay':
+    },
+    'Show All from Relay': async () => {
       await showAllTicketssOnRelayFlow();
-      break;
-    case 'Back to Main Menu':
-      break;
-  }
+    },
+    'Back to Main Menu': async () => {
+      return Promise.resolve();
+    },
+  };
+  const answer = await rawlist(
+    {
+      message: 'Ticket Actions:',
+      choices: TICKET_OPTIONS.map((action) => ({
+        name: action,
+        value: action,
+      })),
+    });
+
+  const action = answer;
+  await ticketActions[action](prisma);
 }
 
 async function createTicketFlow(prisma: PrismaClient): Promise<string | null> {
-  console.log('\nCreate New Ticket\n');
-
   const userKeys = userState.getUserKeys();
-  if (!userKeys) {
-    console.log('No user keys found, please load userKeys');
+  if (userKeys.pubKey === '') {
+    console.log(chalk.red('No user keys found, please load userKeys'));
     return null;
   }
   const projectUuid = userState.getActiveProject();
-  if (projectUuid == '') {
-    console.log('No projectUuid found, please select active project');
+  if (projectUuid === '') {
+    console.log(chalk.red('No projectUuid found, please select active project'));
     return null;
   }
-  const answers = await inquirer.prompt([
-    {
-      type: 'input',
-      name: 'title',
-      message: 'Ticket title:',
-      validate: (input) => input.trim() !== '' || 'Title is required',
-    },
-    {
-      type: 'input',
-      name: 'description',
-      message: 'Description (optional):',
-    },
-    {
-      type: 'input',
-      name: 'type',
-      message: 'Type (Feature | Bug | Epic | Chore):',
-    },
-    {
-      type: 'input',
-      name: 'parent',
-      message: 'Parent Ticket UUID (optional):',
-    },
-    {
-      type: 'input',
-      name: 'children',
-      message: 'Children Ticket UUID (optional):',
-    },
-  ]);
+
+  const title = await input({
+    message: 'Ticket title:',
+    validate: (input) => input.trim() !== '' || 'Title is required',
+  });
+  const description = await input({
+    message: 'Description (optional):',
+  });
+  const ticketType = await input({
+    message: 'Type (Feature | Bug | Epic | Chore):',
+    // validate they match one of these types?
+  });
+  const parentUuid = await input({
+    message: 'Parent Ticket UUID (optional):',
+  });
+  const childrenUuid = await input({
+    message: 'Children Ticket UUIDs (optional):',
+  });
+
+  const ticket = createTicket(
+    projectUuid,
+    ticketType,
+    title,
+    description,
+    userKeys.pubKey,
+    parentUuid,
+  );
 
   const pproject = await getProjectById(prisma, projectUuid);
+  try {
+    saveNewTicket(prisma, ticket);
+  } catch (error) {
+    console.error('\nFailed to create ticket:', error);
+  }
   // project should exist but check.
-  if (!pproject) {
+  if (pproject === null) {
     console.error('\nFailed to find the project');
     return null;
   }
   const project = prismaToProject(pproject);
   try {
-    const ticket = createTicket(
-      project.uuid,
-      answers.type,
-      answers.title,
-      answers.description,
-      userKeys.pubKey,
-      answers.parent,
-    );
-
-    saveNewTicket(prisma, ticket);
-    try {
-      if (project.isPrivate) {
-        const privateEvent = await createAndPublishPrivateTicket(ticket, userKeys, project.members);
-        updateTicketNostrEvent(prisma, ticket.uuid, privateEvent.id, privateEvent.created_at);
-        // update the project to include the new ticket.
-        const privateProject = await updateAndPublishPrivateProject(
-          project,
-          userKeys,
-          project.members,
-          ticket.uuid,
-          'ticket',
-        );
-        updateProjectNostrEvent(prisma, project.uuid, privateProject.id, privateProject.created_at);
-      } else {
-        const event = await createAndPublishTicket(ticket, userKeys);
-        updateTicketNostrEvent(prisma, ticket.uuid, event.id, event.created_at);
-        // update the project to include the new ticket.
-        const updatedProject = await updateAndPublishProject(
-          project,
-          userKeys,
-          ticket.uuid,
-          'ticket',
-        );
-        updateProjectNostrEvent(prisma, project.uuid, updatedProject.id, updatedProject.created_at);
-      }
-      addNewTicketToProject(prisma, project.uuid, ticket.uuid);
-    } catch (relayError) {
-      console.warn('Failed to send ticket to relay:', relayError);
+    if (project.isPrivate) {
+      const privateEvent = await createAndPublishPrivateTicket(ticket, userKeys, project.members);
+      updateTicketNostrEvent(prisma, ticket.uuid, privateEvent.id, privateEvent.created_at);
+      // update the project to include the new ticket.
+      const privateProject = await updateAndPublishPrivateProject(
+        project,
+        userKeys,
+        project.members,
+        ticket.uuid,
+        'ticket',
+      );
+      updateProjectNostrEvent(prisma, project.uuid, privateProject.id, privateProject.created_at);
+    } else {
+      const event = await createAndPublishTicket(ticket, userKeys);
+      updateTicketNostrEvent(prisma, ticket.uuid, event.id, event.created_at);
+      // update the project to include the new ticket.
+      const updatedProject = await updateAndPublishProject(
+        project,
+        userKeys,
+        ticket.uuid,
+        'ticket',
+      );
+      updateProjectNostrEvent(prisma, project.uuid, updatedProject.id, updatedProject.created_at);
     }
-    console.log(`\nTicket created successfully!`);
-    console.log(`\tUUID: ${ticket.uuid}`);
-    return project.uuid;
-  } catch (error) {
-    console.error('\nFailed to create ticket:', error);
+    addNewTicketToProject(prisma, project.uuid, ticket.uuid);
+  } catch (relayError) {
+    console.warn('Failed to send ticket to relay:', relayError);
   }
+  console.log(`\nTicket created successfully!`);
+  console.log(`\tUUID: ${ticket.uuid}`);
+  return project.uuid;
   return null;
 }
 

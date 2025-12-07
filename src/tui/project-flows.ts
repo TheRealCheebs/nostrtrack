@@ -1,248 +1,274 @@
-// flows.ts
-import inquirer from 'inquirer';
-import { PrismaClient } from '@prisma/client';
+import { rawlist, input, confirm } from '@inquirer/prompts';
+import chalk from 'chalk';
+import { v4 as uuidv4 } from 'uuid';
+import { type PrismaClient, type Project as PrismaProject } from '@prisma/client';
 
 import { createProject } from '../services/project';
-import { saveNewProject, getProjects, updateProject } from '../services/prisma/project';
+import { saveNewProject, getProjects } from '../services/prisma/project';
 import {
-  createAndPublishPrivateProject,
-  createAndPublishProject,
+  publishProject,
+  createProjectMemberFromNPub,
 } from '../services/nostr/projects';
-import { formatNostrTimestamp } from '../nostr/helpers';
-import { getAllProjectTicketsFromRelay, getAllProjectsFromRelay } from '../nostr/utils';
+import {
+  getAllProjectTicketsFromRelay,
+  getAllProjectsFromRelay,
+  formatNostrTimestamp,
+  getNpub,
+} from '../nostr/utils';
 import { userState } from '../state/user-state';
-
-import type { Project } from '../interfaces/project';
+import type { Project, ProjectMember } from '../interfaces/project';
 
 export async function mainProjectsFlow(prisma: PrismaClient) {
-  const { action } = await inquirer.prompt([
-    {
-      type: 'rawlist',
-      name: 'action',
-      message: 'Project Actions:',
-      choices: [
-        'Create Project',
-        'Import Project',
-        'List Projects',
-        'Switch Project',
-        // TODO 'Update Project'
-        // TODO: add a sync project option
-        'Show All From Relay',
-        'Show Tickets in Project From Relay',
-        'Back to Main Menu',
-      ],
-    },
-  ]);
+  const PROJECT_OPTIONS = [
+    'Create Project',
+    'Import Project',
+    'Switch Active Project',
+    'List Local Projects',
+    'Remove Local Project',
+    'Show All Remote Projects',
+    'Show Remote Tickets In Active Project',
+    'Back to Main Menu',
+  ] as const;
+  type Action = (typeof PROJECT_OPTIONS)[number];
 
-  switch (action) {
-    case 'Create Project':
+  const projectActions: Record<Action, (prisma: PrismaClient) => Promise<void>> = {
+    'Create Project': async (prisma) => {
       await createProjectFlow(prisma);
-      break;
-    case 'Import Project':
-      console.log('TODO: Importing project...');
-      break;
-    case 'List Projects':
-      await listProjectsFlow(prisma);
-      break;
-    case 'Switch Project':
+    },
+    'Import Project': async () => {
+      console.log(chalk.yellow('TODO: Importing project...'));
+      return Promise.resolve();
+    },
+    'Switch Active Project': async (prisma) => {
       await switchProjectsFlow(prisma);
-      break;
-    case 'Show All From Relay':
+    },
+    'List Local Projects': async (prisma) => {
+      await listLocalProjectsFlow(prisma);
+    },
+    'Remove Local Project': async () => {
+      console.log(chalk.yellow('TODO: remove local project...'));
+      return Promise.resolve();
+    },
+    'Show All Remote Projects': async () => {
       await showAllProjectsOnRelayFlow();
-      break;
-    case 'Show Tickets in Project From Relay':
+    },
+    'Show Remote Tickets In Active Project': async (prisma) => {
       await showAllTicketsInProjectFromRelayFlow(prisma);
-      break;
-    case 'Back to Main Menu':
-      break;
-  }
+    },
+    'Back to Main Menu': async () => {
+      return Promise.resolve();
+    },
+  };
+  const answer = await rawlist({
+    message: 'Project Actions',
+    choices: PROJECT_OPTIONS.map((action) => ({
+      name: action,
+      value: action,
+    })),
+  });
+
+  const action = answer;
+  await projectActions[action](prisma);
 }
 
 async function createProjectFlow(prisma: PrismaClient) {
-  console.log('\nCreate New Project\n');
   const userKeys = userState.getUserKeys();
   if (!userKeys) {
-    console.log('No user keys found, please load userKeys');
+    console.log(chalk.red('No user keys found, please load userKeys'));
     return;
   }
+  let memberUsers: string = '';
 
-  const answers = await inquirer.prompt([
-    {
-      type: 'input',
-      name: 'name',
-      message: 'Project name:',
-      validate: (input) => input.trim() !== '' || 'Project name is required',
-    },
-    {
-      type: 'input',
-      name: 'description',
-      message: 'Project description (optional):',
-    },
-    {
-      type: 'confirm',
-      name: 'isPrivate',
-      message: 'Make this project private?',
-      default: false,
-    },
-    // TODO: do this better
-    {
-      type: 'input',
-      name: 'adminUsers',
-      message: 'Add users with admin roles (comma-separated public keys, optional):',
-    },
-    {
-      type: 'input',
-      name: 'memberUsers',
-      message:
-        'Add users with read only roles, if project is private. (comma-separated public keys, optional):',
-    },
-  ]);
+  const name = await input({
+    message: 'Project name:',
+    validate: (input) => input.trim() !== '' || 'Project name is required',
+  })
+  const description = await input({
+    message: 'Description (optional):',
+  });
+  const isPrivate = await confirm({
+    message: 'Make this project private?',
+  });
+  // TODO: do this better
+  const adminUsers = await input({
+    message: 'Add users with admin roles (comma-separated npubs, optional):',
+  });
 
-  let members: { pubkey: string; role?: string }[] = [];
-  if (answers.adminUsers) {
-    const admin = answers.adminUsers
+  const projectId: string = uuidv4();
+  let members: Array<ProjectMember> = [];
+  if (adminUsers !== '') {
+    const admin = adminUsers
       .split(',')
-      .map((pubkey: string) => ({ pubkey: pubkey.trim(), role: 'admin' }));
+      .map((npub: string) => {
+        const member: ProjectMember | null = createProjectMemberFromNPub(npub, 'admin', projectId);
+        if (member === null) {
+          console.log(chalk.red(`${npub} was not a valide npub, user is being skipped`));
+        }
+        return member;
+      })
+      .filter((member): member is ProjectMember => member !== null);
     members = members.concat(admin);
   }
-  if (answers.memberUsers) {
-    const users = answers.memberUsers
-      .split(',')
-      .map((pubkey: string) => ({ pubkey: pubkey.trim(), role: 'member' }));
-    members = members.concat(users);
+
+  if (isPrivate === true) {
+    memberUsers = await input({
+      message:
+        'Add users with read only roles (comma-separated npubs, optional):',
+    });
+    if (memberUsers !== '') {
+      const users = memberUsers
+        .split(',')
+        .map((npub: string) => {
+          const member: ProjectMember | null = createProjectMemberFromNPub(npub, 'member', projectId);
+          if (member === null) {
+            console.log(chalk.red(`${npub} was not a valide npub, user is being skipped`));
+          }
+          return member;
+        })
+        .filter((member): member is ProjectMember => member !== null);
+      members = members.concat(users);
+    }
+  }
+
+  let project = createProject(
+    projectId,
+    name,
+    userKeys.pubKey,
+    description,
+    isPrivate,
+    members,
+  );
+
+  try {
+    project = await publishProject(project, userKeys);
+  } catch (relayError) {
+    console.log(chalk.yellow('Failed to send project to relay:', relayError));
   }
 
   try {
-    const project = createProject(
-      answers.name,
-      userKeys.pubKey,
-      answers.description,
-      answers.isPrivate,
-      members,
-    );
-
     saveNewProject(prisma, project);
-    try {
-      if (project.isPrivate) {
-        const privateEvent = await createAndPublishPrivateProject(
-          project,
-          userKeys,
-          project.members,
-        );
-        project.lastEventId = privateEvent.id;
-        project.lastEventCreatedAt = privateEvent.created_at;
-      } else {
-        const event = await createAndPublishProject(project, userKeys);
-        project.lastEventId = event.id;
-        project.lastEventCreatedAt = event.created_at;
-      }
-      updateProject(prisma, project);
-    } catch (relayError) {
-      console.warn(' Failed to send project to relay:', relayError);
-    }
-    console.log(`\nProject created successfully!`);
-    console.log(`\tUUID: ${project.uuid}`);
+    console.log(chalk.green(`Project ${projectId} created successfully, setting as active project.`));
     userState.setActiveProject(project.uuid);
   } catch (error) {
-    console.error('\nFailed to create project:', error);
+    if (error instanceof Error) {
+      console.log(chalk.red(`Failed to create project: ${error.message}`));
+    } else {
+      console.log(chalk.red(`Failed to create project: ${String(error)}`));
+    }
   }
 }
 
-export async function listProjectsFlow(prisma: PrismaClient) {
-  console.log('\nProjects\n');
+function printPrismaProjectList(projects: PrismaProject[]) {
+  const columnWidths = {
+    uuid: 40,
+    name: 20,
+    updated: 25,
+    private: 10,
+  };
 
+  // Create the header
+  const header = [
+    'Project UUID'.padEnd(columnWidths.uuid),
+    'Name'.padEnd(columnWidths.name),
+    'Updated'.padEnd(columnWidths.updated),
+    'Private'.padEnd(columnWidths.private),
+  ].join(' | ');
+
+  const rows = projects.map((project) => {
+    const updatedDate = new Date(Number(project.last_event_created_at) * 1000).toISOString();
+    const privateStatus = project.is_private ? 'Yes' : 'No';
+
+    return [
+      project.uuid.padEnd(columnWidths.uuid),
+      project.name.padEnd(columnWidths.name),
+      updatedDate.padEnd(columnWidths.updated),
+      privateStatus.padEnd(columnWidths.private),
+    ].join(' | ');
+  });
+  const table = [header, '-'.repeat(header.length), ...rows].join('\n');
+  console.log(table);
+}
+
+export async function listLocalProjectsFlow(prisma: PrismaClient) {
   const pubKey = userState.getPubKey();
   if (pubKey === '') {
-    console.log('No pubkey found, please load userKeys');
+    console.log(chalk.yellow('No pubkey found, please load userKeys'));
     return;
   }
-  const projects = await getProjects(prisma, pubKey);
+  const projects: PrismaProject[] = await getProjects(prisma, pubKey);
 
   if (projects.length === 0) {
     console.log('No projects found.');
     return;
   }
 
-  console.table(
-    projects.map((p) => ({
-      ID: p.uuid.slice(0, 8),
-      Name: p.name,
-      Private: p.is_private ? 'Yes' : 'No',
-    })),
-  );
+  console.log(chalk.blue(`Projects ${getNpub(pubKey)} has locally saved:`));
 
-  const { action } = await inquirer.prompt([
-    {
-      type: 'rawlist',
-      name: 'action',
-      message: 'Select an action:',
-      choices: ['View Details', 'Back to Main Menu'],
-    },
-  ]);
+  printPrismaProjectList(projects);
 
-  if (action === 'View Details') {
-    const { project_uuid } = await inquirer.prompt([
-      {
-        type: 'rawlist',
-        name: 'project_uuid',
-        message: 'Select a project:',
-        choices: projects.map((project) => ({
-          name: project.name,
-          value: project.uuid,
-        })),
-      },
-    ]);
+  const conf = await confirm({
+    message: 'View Project Details',
+    default: false,
+  });
 
-    await getProjectDetails(prisma, project_uuid);
+  if (conf === false) {
+    return;
   }
+
+  const options = projects.map((project) => ({
+    name: project.name,
+    value: project.uuid,
+  }));
+  options.push({
+    name: 'Cancel',
+    value: '',
+  });
+
+  const detailedView = await rawlist({
+    message: 'Select a project',
+    choices: options,
+  });
+
+  if (detailedView === '') {
+    return;
+  }
+
+  await getProjectDetails(prisma, detailedView);
 }
 
 export async function switchProjectsFlow(prisma: PrismaClient) {
-  console.log('\nProjects\n');
   const pubKey = userState.getPubKey();
   if (pubKey === '') {
-    console.log('No pubkey found, please load userKeys');
+    console.log(chalk.yellow('No pubkey found, please load userKeys'));
   }
 
-  const projects = await getProjects(prisma, pubKey);
+  const projects: PrismaProject[] = await getProjects(prisma, pubKey);
 
   if (projects.length === 0) {
-    console.log('No projects found.');
+    console.log(chalk.yellow('No projects found.'));
   }
 
-  console.table(
-    projects.map((p) => ({
-      ID: p.uuid.slice(0, 8),
-      Name: p.name,
-      Private: p.is_private ? 'Yes' : 'No',
-    })),
-  );
+  const options = projects.map((project) => ({
+    name: project.name,
+    value: project.uuid,
+  }));
+  options.push({
+    name: 'Cancel',
+    value: '',
+  });
 
-  const { action } = await inquirer.prompt([
-    {
-      type: 'rawlist',
-      name: 'action',
-      message: 'Select an action:',
-      choices: ['Select Project', 'Back to Main Menu'],
-    },
-  ]);
+  const selectedProject = await rawlist({
+    message: 'Select a project',
+    choices: options,
+  });
 
-  if (action === 'Back to Main Menu') {
-    console.log('Action Canceled, not switching.');
+  if (selectedProject === '') {
+    return;
   }
 
-  const { project_uuid } = await inquirer.prompt([
-    {
-      type: 'rawlist',
-      name: 'project_uuid',
-      message: 'Select a project:',
-      choices: projects.map((project) => ({
-        name: project.name,
-        value: project.uuid,
-      })),
-    },
-  ]);
-  userState.setActiveProject(project_uuid);
+  // TODO: think about a confirm here before switching?
+
+  userState.setActiveProject(selectedProject);
 }
 
 export async function getProjectDetails(prisma: PrismaClient, projectId: string): Promise<void> {
@@ -257,7 +283,7 @@ export async function getProjectDetails(prisma: PrismaClient, projectId: string)
     });
 
     if (!project) {
-      console.log('Project not found.');
+      console.log(chalk.yellow('Project not found.'));
       return;
     }
 
@@ -301,15 +327,14 @@ export async function getProjectDetails(prisma: PrismaClient, projectId: string)
 }
 
 async function showAllProjectsOnRelayFlow(): Promise<void> {
-  const answers = await inquirer.prompt([
+  const limit = await input(
     {
-      type: 'input',
-      name: 'limit',
       message: 'Number of projects to show',
+      validate: (input) => Number.isInteger(Number(input)) || 'Must be a valid integer',
     },
-  ]);
+  );
 
-  const projects: Project[] = await getAllProjectsFromRelay(answers.limit);
+  const projects: Project[] = await getAllProjectsFromRelay(Number(limit));
 
   projects.forEach((project) => {
     const date = new Date(project.lastEventCreatedAt * 1000); // Convert milliseconds to a Date object

@@ -1,11 +1,44 @@
-import { nip44, finalizeEvent } from 'nostr-tools';
+import { nip44, finalizeEvent, nip19 } from 'nostr-tools';
 import { randomBytes } from '@noble/hashes/utils';
+import type { NostrEvent, EventTemplate } from 'nostr-tools';
+
 import { NOSTR_GIFT_WRAP_KIND, NOSTR_PROJECT_KIND } from '../../constants';
 import { publishToRelays } from '../../nostr/utils';
-
 import type { Project, ProjectMember } from '../../interfaces/project';
 import type { UserKeys } from '../../interfaces/identity';
-import type { NostrEvent, EventTemplate } from 'nostr-tools';
+
+export function createProjectMemberFromNPub(npub: string, role: string, projectUuid: string): ProjectMember | null {
+  const decoded = nip19.decode(npub.trim());
+  if (decoded.type !== 'npub') {
+    return null
+  }
+  const pubkey: string = decoded.data;
+
+  return {
+    projectId: projectUuid,
+    pubKey: pubkey,
+    role: role,
+    createdAt: Math.floor(Date.now() / 1000),
+  } as ProjectMember;
+
+}
+
+export async function publishProject(project: Project, userKeys: UserKeys): Promise<Project> {
+  if (project.isPrivate) {
+    const privateEvent = await createAndPublishPrivateProject(
+      project,
+      userKeys,
+      project.members,
+    );
+    project.lastEventId = privateEvent.id;
+    project.lastEventCreatedAt = privateEvent.created_at;
+  } else {
+    const event = await createAndPublishProject(project, userKeys);
+    project.lastEventId = event.id;
+    project.lastEventCreatedAt = event.created_at;
+  }
+  return project;
+}
 
 export async function createAndPublishPrivateProject(
   project: Project,
@@ -55,6 +88,7 @@ export async function createAndPublishPrivateProject(
 
   return rumor;
 }
+
 export async function updateAndPublishPrivateProject(
   project: Project,
   userKeys: UserKeys,
@@ -125,7 +159,7 @@ export async function createAndPublishProject(
   };
 
   const signed = finalizeEvent(eventTemplate, userKeys.privateKey);
-  publishToRelays(signed);
+  await publishToRelays(signed);
   return signed;
 }
 
@@ -150,34 +184,27 @@ export async function updateAndPublishProject(
   };
 
   const signed = finalizeEvent(eventTemplate, userKeys.privateKey);
-  publishToRelays(signed);
+  await publishToRelays(signed);
   return signed;
 }
 
 export function nostrEventToProject(event: NostrEvent): Project {
-  // Parse the content field
-  const parsedContent = JSON.parse(event.content);
+  const parsedContent = JSON.parse(event.content) as Partial<Project>;
 
-  // Validate and transform the parsed content if necessary
-  const project: Project = {
-    uuid: parsedContent.uuid,
-    name: parsedContent.name,
-    description: parsedContent.description,
-    isPrivate: parsedContent.isPrivate,
-    createdAt: parsedContent.createdAt,
+  return {
+    uuid: parsedContent.uuid || '',
+    name: parsedContent.name || 'Untitled Project',
+    description: parsedContent.description || '',
+    isPrivate: parsedContent.isPrivate || false,
+    createdAt: parsedContent.createdAt || 0,
     lastEventId: event.id,
     lastEventCreatedAt: event.created_at,
     members: parsedContent.members || [],
     tickets: parsedContent.tickets || [],
   };
-
-  return project;
 }
 
-export async function getPrivateProject(
-  rumorEvent: NostrEvent,
-  userKeys: UserKeys,
-): Promise<Project> {
+export function getPrivateProject(rumorEvent: NostrEvent, userKeys: UserKeys): Project {
   // Extract the encrypted content and nonce from the rumor
   const encryptedContent = rumorEvent.content;
   const conversationKey = nip44.getConversationKey(userKeys.privateKey, rumorEvent.pubkey);
@@ -187,14 +214,14 @@ export async function getPrivateProject(
 
   // Parse the decrypted content
 
-  const parsedContent = JSON.parse(decryptedContent);
+  const parsedContent = JSON.parse(decryptedContent) as Partial<Project>;
   // Validate and transform the parsed content if necessary
   const project: Project = {
-    uuid: parsedContent.uuid,
-    name: parsedContent.name,
-    description: parsedContent.description,
-    isPrivate: parsedContent.isPrivate,
-    createdAt: parsedContent.createdAt,
+    uuid: parsedContent.uuid || '',
+    name: parsedContent.name || 'Untitled Project',
+    description: parsedContent.description || '',
+    isPrivate: parsedContent.isPrivate || false,
+    createdAt: parsedContent.createdAt || 0,
     lastEventId: rumorEvent.id,
     lastEventCreatedAt: rumorEvent.created_at,
     members: parsedContent.members || [],

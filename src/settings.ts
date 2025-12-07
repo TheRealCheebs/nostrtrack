@@ -38,14 +38,7 @@ async function loadRelaysConfig(): Promise<string[]> {
     const { relays } = JSON.parse(data);
     return relays || [];
   } catch (error) {
-    if (error instanceof Error && (error as NodeJS.ErrnoException).code === 'ENOENT') {
-      console.log(`Config file not found, returning default relays.`);
-      return [];
-    } else if (error instanceof Error) {
-      console.error(`Failed to load relays: ${error.message}`);
-    } else {
-      console.error('Failed to load relays: Unknown error');
-    }
+    console.error(`Error loading relays: ${error}`);
     return [];
   }
 }

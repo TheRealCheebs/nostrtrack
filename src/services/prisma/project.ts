@@ -1,8 +1,9 @@
-import { PrismaClient } from '@prisma/client';
-import type {
-  Project as PrismaProject,
-  ProjectMember as PrismaProjectMember,
+import {
+  type PrismaClient,
+  type Project as PrismaProject,
+  type ProjectMember as PrismaProjectMember,
 } from '@prisma/client';
+
 import type { Project, ProjectMember } from '../../interfaces/project';
 
 export async function saveNewProject(
@@ -90,7 +91,7 @@ export async function getProjectById(
 ): Promise<
   | (PrismaProject & {
       members: PrismaProjectMember[];
-      tickets: { uuid: string }[];
+      tickets: Array<{ uuid: string }>;
     })
   | null
 > {
@@ -245,7 +246,7 @@ function prismaToProjectMember(prismaMember: PrismaProjectMember): ProjectMember
 export function prismaToProject(
   prismaProject: PrismaProject & {
     members: PrismaProjectMember[];
-    tickets: { uuid: string }[];
+    tickets: Array<{ uuid: string }>;
   },
 ): Project {
   return {

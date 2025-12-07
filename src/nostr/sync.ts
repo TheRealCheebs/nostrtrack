@@ -1,6 +1,7 @@
 import { SimplePool } from 'nostr-tools';
 import type { Event } from 'nostr-tools/lib/types';
 import type { SubCloser } from 'nostr-tools/lib/types/abstract-pool';
+
 import { NOSTR_GIFT_WRAP_KIND, NOSTR_PROJECT_KIND, NOSTR_TICKET_KIND } from '../constants';
 import { nostrEventToProject, getPrivateProject } from '../services/nostr/projects';
 import { nostrEventToTicket, getPrivateTicket } from '../services/nostr/ticket';
@@ -52,9 +53,7 @@ export function closeAllSubscriptions() {
 
 // Helper to extract tag values from a Nostr event
 export function getTagValue(event: Event, tag: string): string[] {
-  return event.tags
-    .filter((t) => t[0] === tag && typeof t[1] === 'string')
-    .map((t) => t[1] as string);
+  return event.tags.filter((t) => t[0] === tag && typeof t[1] === 'string').map((t) => t[1]);
 }
 
 /**
@@ -83,7 +82,7 @@ export function subscribeToPrivateProjectUpdates(
   };
 
   async function handleProjectEvent(event: Event) {
-    const privateProject = await getPrivateProject(event, userKeys);
+    const privateProject = getPrivateProject(event, userKeys);
     onProjectEvent(privateProject);
 
     // Check for updated ticket/member tags
@@ -92,7 +91,7 @@ export function subscribeToPrivateProjectUpdates(
 
     // If the event references an updated ticket, fetch it from Nostr and emit via callback
     if (updatedEvent.length) {
-      const ticketUuid = updatedEvent[0]!;
+      const ticketUuid = updatedEvent[0];
       if (updatedProperty.includes('add-ticket')) {
         const sc: SubCloser = subscribeToPrivateTicketUpdates(
           relays,
@@ -117,7 +116,7 @@ export function subscribeToPrivateProjectUpdates(
     onevent: (event: Event) => {
       void handleProjectEvent(event);
     },
-    onclose: (reasons: any) => console.log('Subscription closed:', reasons),
+    onclose: (reasons: string[]) => console.log('Subscription closed:', reasons.join(', ')),
   });
 }
 
@@ -144,7 +143,7 @@ export function subscribeToProjectUpdates(
     since: lastSyncTime || Math.floor(Date.now() / 1000),
   };
 
-  async function handleProjectEvent(event: Event) {
+  function handleProjectEvent(event: Event) {
     const projectUpdate = nostrEventToProject(event);
     onProjectEvent(projectUpdate);
 
@@ -156,7 +155,7 @@ export function subscribeToProjectUpdates(
     const updatedEvent = getTagValue(event, 'updated');
 
     if (updatedEvent.length) {
-      const ticketUuid = updatedEvent[0]!;
+      const ticketUuid = updatedEvent[0];
       if (updatedProperty.includes('add-ticket')) {
         const sc: SubCloser = subscribeToTicketUpdates(
           relays,
@@ -180,7 +179,7 @@ export function subscribeToProjectUpdates(
     onevent: (event: Event) => {
       void handleProjectEvent(event);
     },
-    onclose: (reasons: any) => console.log('Subscription closed:', reasons),
+    onclose: (reasons: string[]) => console.log('Subscription closed:', reasons.join(', ')),
   });
 }
 
@@ -211,7 +210,7 @@ export function subscribeToPrivateTicketUpdates(
   };
 
   async function handleTicketEvent(event: Event) {
-    const privateTicket = await getPrivateTicket(event, userKeys);
+    const privateTicket = getPrivateTicket(event, userKeys);
     onTicketEvent(privateTicket);
   }
 
@@ -219,7 +218,7 @@ export function subscribeToPrivateTicketUpdates(
     onevent: (event: Event) => {
       void handleTicketEvent(event);
     },
-    onclose: (reasons: any) => console.log('Subscription closed:', reasons),
+    onclose: (reasons: string[]) => console.log('Subscription closed:', reasons.join(', ')),
   });
 }
 
@@ -246,7 +245,7 @@ export function subscribeToTicketUpdates(
     since: lastSyncTime || Math.floor(Date.now() / 1000),
   };
 
-  async function handleTicketEvent(event: Event) {
+  function handleTicketEvent(event: Event) {
     const ticketUpdate = nostrEventToTicket(event);
     onTicketUpdate(ticketUpdate);
   }
@@ -255,6 +254,6 @@ export function subscribeToTicketUpdates(
     onevent: (event: Event) => {
       void handleTicketEvent(event);
     },
-    onclose: (reasons: any) => console.log('Subscription closed:', reasons),
+    onclose: (reasons: string[]) => console.log('Subscription closed:', reasons.join(', ')),
   });
 }

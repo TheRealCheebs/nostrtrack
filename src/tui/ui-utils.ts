@@ -1,4 +1,5 @@
-import inquirer from 'inquirer';
+import { input } from '@inquirer/prompts';
+
 import { userState } from '../state/user-state';
 
 export function clearScreen() {
@@ -23,23 +24,8 @@ export function showHeader() {
 }
 
 export async function pauseBeforeContinue() {
-  await inquirer.prompt([
-    {
-      type: 'input',
-      name: 'continue',
-      message: '\nPress Enter to continue...',
-    },
-  ]);
-}
-
-export async function confirmAction(message: string): Promise<boolean> {
-  const { confirmed } = await inquirer.prompt([
-    {
-      type: 'confirm',
-      name: 'confirmed',
-      message,
-      default: false,
-    },
-  ]);
-  return confirmed;
+  await input({
+    message: '\nPress Enter to continue...',
+  });
+  clearScreen();
 }

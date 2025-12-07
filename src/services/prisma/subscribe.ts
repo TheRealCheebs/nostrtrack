@@ -1,4 +1,6 @@
-import { PrismaClient } from '@prisma/client';
+import { type PrismaClient } from '@prisma/client';
+import type { SubCloser } from 'nostr-tools/lib/types/abstract-pool';
+
 import {
   subscribeToProjectUpdates,
   subscribeToPrivateProjectUpdates,
@@ -9,8 +11,6 @@ import {
 import { updateProject, getTicketUuidsByProjectUuid } from '../../services/prisma/project';
 import { updateTicket } from '../../services/prisma/ticket';
 import { getUserProjects } from '../../services/prisma/identity';
-
-import type { SubCloser } from 'nostr-tools/lib/types/abstract-pool';
 import type { Subscription } from '../../nostr/sync';
 import type { UserKeys } from '../../interfaces/identity';
 

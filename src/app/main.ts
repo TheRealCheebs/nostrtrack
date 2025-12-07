@@ -1,142 +1,125 @@
-import inquirer from 'inquirer';
-import { PrismaClient } from '@prisma/client';
 import { execSync } from 'child_process';
 
+import { rawlist } from '@inquirer/prompts';
+import { PrismaClient } from '@prisma/client';
+
 import { mainUsersFlow, noUserFlow } from '../tui/user-flows';
-import { mainProjectsFlow } from '../tui/project-flows.js';
-import { mainTicketsFlow } from '../tui/ticket-flows.js';
-import { mainSettingsFlow } from '../tui/settings-flows.js';
-import { clearScreen, showHeader, pauseBeforeContinue } from '../tui/ui-utils.js';
-import { closeAllSubscriptions } from '../nostr/sync.js';
+import { mainProjectsFlow } from '../tui/project-flows';
+import { mainTicketsFlow } from '../tui/ticket-flows';
+import { mainSettingsFlow } from '../tui/settings-flows';
+import { clearScreen, showHeader, pauseBeforeContinue } from '../tui/ui-utils';
+import { closeAllSubscriptions } from '../nostr/sync';
 import { userState } from '../state/user-state';
-
-import { getActiveUserKeys } from '../services/prisma/identity.js';
-import { listRelays } from '../settings.js';
-import { initNostr } from '../nostr/utils.js';
-
-import { subscribeAllForUser } from '../services/prisma/subscribe.js';
+import { getActiveUserKeys } from '../services/prisma/identity';
+import { listRelays } from '../settings';
+import { initNostr } from '../nostr/utils';
+import { subscribeAllForUser } from '../services/prisma/subscribe';
+import type { UserKeys } from '../interfaces/identity';
 
 // Main application loop
 async function main() {
   const prisma = new PrismaClient();
 
   let running = await initializeApp(prisma);
-  while (running) {
-    try {
+  try {
+    while (running) {
       // at this point there should always be userkeys loaded
       // Clear screen and show header
       clearScreen();
       showHeader();
       running = await mainMenu(prisma);
-
-      // Pause before returning to menu (except for exit)
-      if (running) {
-        await pauseBeforeContinue();
-      }
-    } catch (error) {
-      console.error('An error occurred:', error);
-      await pauseBeforeContinue();
+      if (running) await pauseBeforeContinue();
     }
+  } catch (error) {
+    console.error('An error occurred:', error);
+  } finally {
+    await cleanup(prisma);
   }
-
-  // Cleanup before exit
-  await cleanup();
+  await cleanup(prisma);
   console.log('\nGoodbye!');
   process.exit(0);
 }
 
 async function mainMenu(prisma: PrismaClient): Promise<boolean> {
+  const CATEGORY_OPTIONS = ['Users', 'Projects', 'Tickets', 'Settings', 'Exit'] as const;
+  type Category = (typeof CATEGORY_OPTIONS)[number];
   let keepRunning = true;
 
-  const { category } = await inquirer.prompt([
-    {
-      type: 'rawlist',
-      name: 'category',
-      message: 'Select a category:',
-      choices: ['Users', 'Projects', 'Tickets', 'Settings', 'Exit'],
-    },
-  ]);
-
-  switch (category) {
-    case 'Users':
+  const categoryActions: Record<Category, () => Promise<void>> = {
+    Users: async () => {
       await mainUsersFlow(prisma);
-      break;
-    case 'Projects':
+    },
+    Projects: async () => {
       await mainProjectsFlow(prisma);
-      break;
-    case 'Tickets':
+    },
+    Tickets: async () => {
       await mainTicketsFlow(prisma);
-      break;
-    case 'Settings':
+    },
+    Settings: async () => {
       await mainSettingsFlow();
-      break;
-    case 'Exit':
+    },
+    Exit: () => {
       keepRunning = false;
-  }
+      return Promise.resolve();
+    },
+  };
+
+  const answer = await rawlist({
+    message: 'Select a category:',
+    choices: CATEGORY_OPTIONS.map((category) => ({
+      name: category,
+      value: category,
+    })),
+  });
+
+  const category = answer;
+  await categoryActions[category]();
+
   return keepRunning;
 }
 
 async function initializeApp(prisma: PrismaClient): Promise<boolean> {
   console.log('Initializing application...');
 
-  // load config
   const relays = await listRelays();
-  initNostr(relays).catch((error) => {
-    // we need to set offline mode or something here.
-    console.error('Error initializing Nostr:', error);
-  });
+  await initNostr(relays);
+  initializeDatabase();
 
-  // database
-  await initializeDatabase(prisma);
-  //
-  // Load user keys
-  let userKeys = await getActiveUserKeys(prisma);
-  if (!userKeys) {
+  let userKeys: UserKeys = await getActiveUserKeys(prisma);
+  while (userKeys.pubKey === '') {
     userKeys = await noUserFlow(prisma);
   }
-  if (!userKeys) return false;
 
   userState.setUserKeys(userKeys);
 
-  subscribeAllForUser(prisma, userKeys, relays);
+  await subscribeAllForUser(prisma, userKeys, relays);
 
-  // Any other initialization tasks
   console.log('Application initialized');
   return true;
 }
 
-async function cleanup() {
-  console.log('Cleaning up...');
-
+async function cleanup(prisma: PrismaClient) {
   closeAllSubscriptions();
 
-  // Any other cleanup tasks
-  console.log('Cleanup complete');
+  try {
+    await prisma.$disconnect();
+  } catch (error) {
+    console.error('Error during prisma cleanup:', error);
+  }
 }
 
-async function initializeDatabase(prisma: PrismaClient) {
+function initializeDatabase() {
   try {
-    // Check if the `Identity` table exists
-    const result = await prisma.$queryRaw<{ name: string }[]>`
-      SELECT name FROM sqlite_master WHERE type='table' AND name='Identity';
-    `;
-
-    if (!result || result.length === 0) {
-      console.log('Table `Identity` does not exist. Running migrations...');
-      // Run migrations
-      execSync('npx prisma migrate deploy', { stdio: 'inherit' });
-      console.log('Migrations applied successfully.');
-    } else {
-      console.log('Database is already initialized.');
-    }
+    console.log('Applying database migrations...');
+    execSync('npx prisma migrate deploy', { stdio: 'inherit' });
+    console.log('Migrations applied successfully');
   } catch (error) {
-    console.error('Error during database initialization:', error);
-    throw error;
+    console.error('Failed to apply migrations:', error);
   }
 }
 
 // Start the application
 main().catch((error) => {
   console.error('Fatal error:', error);
-  process.exit(1);
+  throw error;
 });

@@ -1,9 +1,9 @@
 import { getPublicName } from '../nostr/utils';
+import { UserKeys } from '../interfaces/identity';
 
-type UserKeys = { pubKey: string; privateKey: Uint8Array } | null;
 
 class UserState {
-  private userKeys: UserKeys = null;
+  private userKeys: UserKeys = { pubKey: '', privateKey: new Uint8Array() };
   private userName: string | null = null;
   private activeProject: string = '';
   private subscribers: Array<() => void> = [];

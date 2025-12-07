@@ -1,5 +1,6 @@
 import { generateSecretKey, getPublicKey, nip19, SimplePool } from 'nostr-tools';
 import type { NostrEvent } from 'nostr-tools';
+
 import { NOSTR_PROJECT_KIND, NOSTR_TICKET_KIND } from '../constants';
 import { nostrEventToProject } from '../services/nostr/projects';
 import { nostrEventToTicket } from '../services/nostr/ticket';
@@ -10,19 +11,15 @@ import type { UserKeys } from '../interfaces/identity';
 let pool: SimplePool | null = null; // Global pool instance
 let relays: string[] = []; // Global list of relays
 
-/**
- * Initialize the Nostr pool and relays.
- * @param relayUrls - Array of relay URLs to connect to.
- */
 export async function initNostr(relayUrls: string[]): Promise<void> {
-  if (!pool) {
+  if (pool == null) {
     pool = new SimplePool();
     relays = relayUrls;
 
     // Connect to all relays
     for (const relay of relays) {
       try {
-        await pool?.ensureRelay(relay); // Await the promise
+        await pool?.ensureRelay(relay);
         console.log(`Relay added: ${relay}`);
       } catch (error) {
         console.warn(`Failed to connect to relay ${relay}:`, error);
@@ -34,7 +31,7 @@ export async function initNostr(relayUrls: string[]): Promise<void> {
 }
 
 export function createKeys(): UserKeys {
-  let userPrivateKey = generateSecretKey();
+  const userPrivateKey = generateSecretKey();
   const pubKey = getPublicKey(userPrivateKey);
 
   return { pubKey: pubKey, privateKey: userPrivateKey };
@@ -43,22 +40,36 @@ export function createKeys(): UserKeys {
 export function importKeys(nsec: string): UserKeys {
   try {
     const decoded = nip19.decode(nsec);
-
     if (decoded.type !== 'nsec') {
       throw new Error('Only nsec keys are accepted.');
     }
 
-    const pubKey = getPublicKey(decoded.data);
+    const pubKey: string = getPublicKey(decoded.data);
 
     return { pubKey: pubKey, privateKey: decoded.data };
   } catch (error) {
+    console.error('Invalid nsec provided:', error);
     throw new Error('Invalid nsec provided.');
   }
 }
 
-export function getPublicName(pubKey: string): string {
-  //const { data: pubkey } = nip19.decode('npub1...'); // Replace with actual npub
+type Profile = {
+  name: string;
+};
 
+function parseProfile(content: string): Profile | null {
+  try {
+    const parsed = JSON.parse(content) as unknown;
+    if (typeof parsed === 'object' && parsed !== null && 'name' in parsed) {
+      return parsed as Profile;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+export function getPublicName(pubKey: string): string {
   const pool = new SimplePool();
   const relays = ['wss://relay.damus.io']; // Add more relays
   let name = '';
@@ -70,9 +81,11 @@ export function getPublicName(pubKey: string): string {
   };
   const sub = pool.subscribeMany(relays, filter, {
     onevent(event) {
-      const profile = JSON.parse(event.content);
-      name = profile.name;
-      sub.close();
+      const profile = parseProfile(event.content);
+      if (profile) {
+        name = profile.name;
+        sub.close();
+      }
     },
     oneose() {
       sub.close();
@@ -80,11 +93,12 @@ export function getPublicName(pubKey: string): string {
   });
   // if the userName doesn't come back show the npub
   if (name === '') {
-    name = nip19.npubEncode(pubKey);
+    name = getNpub(pubKey);
   }
   return name;
 }
 
+// simple wrapper for getting the nbup format
 export function getNpub(pubkey: string): string {
   return nip19.npubEncode(pubkey);
 }
@@ -94,10 +108,11 @@ export function convertForNIP19(userKeys: UserKeys): {
   npub: string;
 } {
   const nsec = nip19.nsecEncode(userKeys.privateKey);
-  const npub = nip19.npubEncode(userKeys.pubKey);
+  const npub = getNpub(userKeys.pubKey);
 
   return { nsec, npub };
 }
+
 /**
  * Publish an event to all configured relays.
  * @param event - The Nostr event to publish.
@@ -170,7 +185,6 @@ export async function getAllTicketsFromRelay(limit: number = 10): Promise<Ticket
     const tickets: Ticket[] = [];
 
     events.forEach((event) => {
-      console.log(` the raw event is ${event}`);
       try {
         const ticket = nostrEventToTicket(event); // Convert event to project
         if (ticket) {
@@ -219,4 +233,9 @@ export async function getAllProjectTicketsFromRelay(
     console.error('Failed to fetch events from any relay:', error);
     return [];
   }
+}
+
+export function formatNostrTimestamp(timestamp: bigint): string {
+  const date = new Date(Number(timestamp)); // Convert milliseconds to a Date object
+  return date.toLocaleString(); // Format the date to a readable string
 }

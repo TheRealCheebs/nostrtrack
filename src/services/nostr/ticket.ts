@@ -1,12 +1,12 @@
 import { nip44, finalizeEvent } from 'nostr-tools';
 import { randomBytes } from '@noble/hashes/utils';
+import type { NostrEvent, EventTemplate } from 'nostr-tools';
+
 import { NOSTR_GIFT_WRAP_KIND, NOSTR_TICKET_KIND } from '../../constants';
 import { publishToRelays } from '../../nostr/utils';
-
 import type { Ticket } from '../../interfaces/ticket';
 import type { ProjectMember } from '../../interfaces/project';
 import type { UserKeys } from '../../interfaces/identity';
-import type { NostrEvent, EventTemplate } from 'nostr-tools';
 
 export async function createAndPublishPrivateTicket(
   ticket: Ticket,
@@ -73,7 +73,7 @@ export async function createAndPublishTicket(
   };
 
   const signed = finalizeEvent(eventTemplate, userKeys.privateKey);
-  publishToRelays(signed);
+  await publishToRelays(signed);
   return signed;
 }
 
@@ -94,7 +94,7 @@ export async function updateAndPublishTicket(
   };
 
   const signed = finalizeEvent(eventTemplate, userKeys.privateKey);
-  publishToRelays(signed);
+  await publishToRelays(signed);
   return signed;
 }
 
@@ -127,21 +127,19 @@ export async function deleteTicket(
 }
 
 export function nostrEventToTicket(event: NostrEvent): Ticket {
-  // Parse the content field
-  const parsedContent = JSON.parse(event.content);
+  const parsedContent = JSON.parse(event.content) as Partial<Ticket>;
 
-  // Validate and transform the parsed content if necessary
   const ticket: Ticket = {
-    uuid: parsedContent.uuid,
-    projectUuid: parsedContent.projectUuid,
-    title: parsedContent.title,
-    type: parsedContent.type,
-    description: parsedContent.description,
-    state: parsedContent.state,
-    parentUuid: parsedContent.parentUuid,
-    creatorPubkey: parsedContent.creatorPubkey,
-    createdAt: parsedContent.createdAt,
-    updatedAt: parsedContent.updatedAt,
+    uuid: parsedContent.uuid || '',
+    projectUuid: parsedContent.projectUuid || '',
+    title: parsedContent.title || '',
+    type: parsedContent.type || '',
+    description: parsedContent.description || '',
+    state: parsedContent.state || '',
+    parentUuid: parsedContent.parentUuid || '',
+    creatorPubkey: parsedContent.creatorPubkey || '',
+    createdAt: parsedContent.createdAt || 0,
+    updatedAt: parsedContent.updatedAt || 0,
     lastEventId: event.id,
     lastEventCreatedAt: event.created_at,
     childrenUuids: parsedContent.childrenUuids || [],
@@ -150,10 +148,7 @@ export function nostrEventToTicket(event: NostrEvent): Ticket {
   return ticket;
 }
 
-export async function getPrivateTicket(
-  rumorEvent: NostrEvent,
-  userKeys: UserKeys,
-): Promise<Ticket> {
+export function getPrivateTicket(rumorEvent: NostrEvent, userKeys: UserKeys): Ticket {
   // Extract the encrypted content and nonce from the rumor
   const encryptedContent = rumorEvent.content;
   const conversationKey = nip44.getConversationKey(userKeys.privateKey, rumorEvent.pubkey);
@@ -163,19 +158,19 @@ export async function getPrivateTicket(
 
   // Parse the decrypted content
 
-  const parsedContent = JSON.parse(decryptedContent);
+  const parsedContent = JSON.parse(decryptedContent) as Partial<Ticket>;
   // Validate and transform the parsed content if necessary
   const ticket: Ticket = {
-    uuid: parsedContent.uuid,
-    projectUuid: parsedContent.projectUuid,
-    title: parsedContent.title,
-    type: parsedContent.type,
-    description: parsedContent.description,
-    state: parsedContent.state,
-    parentUuid: parsedContent.parentUuid,
-    creatorPubkey: parsedContent.creatorPubkey,
-    createdAt: parsedContent.createdAt,
-    updatedAt: parsedContent.updatedAt,
+    uuid: parsedContent.uuid || '',
+    projectUuid: parsedContent.projectUuid || '',
+    title: parsedContent.title || '',
+    type: parsedContent.type || '',
+    description: parsedContent.description || '',
+    state: parsedContent.state || '',
+    parentUuid: parsedContent.parentUuid || '',
+    creatorPubkey: parsedContent.creatorPubkey || '',
+    createdAt: parsedContent.createdAt || 0,
+    updatedAt: parsedContent.updatedAt || 0,
     lastEventId: rumorEvent.id,
     lastEventCreatedAt: rumorEvent.created_at,
     childrenUuids: parsedContent.childrenUuids || [],

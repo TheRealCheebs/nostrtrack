@@ -1,73 +1,115 @@
 import eslint from '@eslint/js';
 import globals from 'globals';
-import tseslint from '@typescript-eslint/eslint-plugin';
-import tsParser from '@typescript-eslint/parser';
+import tseslint from 'typescript-eslint';
 import prettierConfig from 'eslint-config-prettier';
 import importPlugin from 'eslint-plugin-import';
 import nPlugin from 'eslint-plugin-n';
 import promisePlugin from 'eslint-plugin-promise';
 
-export default [
+export default tseslint.config(
   {
     ignores: [
       'node_modules/**',
       'dist/**',
       'test/**',
       'coverage/**',
+      'lib/**',
+      '*.d.ts',
       'vite.config.ts',
-      'eslint.config.js',
+      'eslint.config.ts',
     ],
   },
   eslint.configs.recommended,
-  tseslint.configs.recommended,
-  tseslint.configs['recommended-type-checked'],
+  ...tseslint.configs.recommended,
+  ...tseslint.configs.recommendedTypeChecked,
   prettierConfig,
-  importPlugin.configs.recommended,
-  importPlugin.configs.typescript,
+  importPlugin.flatConfigs.recommended,
+  importPlugin.flatConfigs.typescript,
   nPlugin.configs['flat/recommended-module'],
   promisePlugin.configs['flat/recommended'],
+  // Gradually enable strict rules as your project matures
+  // ...tseslint.configs.strictTypeChecked,
   {
     languageOptions: {
-      parser: tsParser,
       globals: {
         ...globals.browser,
         ...globals.es2021,
       },
       parserOptions: {
-        project: './tsconfig.json',
+        projectService: true,
         tsconfigRootDir: import.meta.dirname,
       },
     },
     rules: {
-      // Prefer short-form (e.g., string[][] vs Array<Array<string>>) for simple array types
+      'no-else-return': 'error', // Enforce early returns and flat code
+      'no-lonely-if': 'error', // Prevent if statements that could be early returns
+      'max-depth': ['error', 3], // Limit nesting depth
+      complexity: ['error', 10], // Limit cyclomatic complexity
+
+      // TypeScript-specific rules for type safety and consistency
       '@typescript-eslint/array-type': ['error', { default: 'array-simple' }],
-      // Disable base import check as we use TS extensionless imports
-      'n/no-missing-import': 'off',
-      // Require 'type' keyword on type imports/export statements
       '@typescript-eslint/consistent-type-imports': [
         'error',
-        { prefer: 'type-imports', fixStyle: 'inline-type-imports' },
+        {
+          prefer: 'type-imports',
+          fixStyle: 'inline-type-imports',
+          disallowTypeAnnotations: true,
+        },
       ],
       '@typescript-eslint/consistent-type-exports': [
         'error',
         { fixMixedExportsWithInlineTypeSpecifier: true },
       ],
-      // Disallow empty functions (NB: must disable base rule for TS)
-      'no-empty-function': 'off',
-      '@typescript-eslint/no-empty-function': 'error',
-      // Promote flatter and cleaner control flows
-      'no-else-return': 'error',
-      // Ignore experimental features (node: >22.4.0) that we use
-      'n/no-unsupported-features/node-builtins': ['error', { ignores: ['CloseEvent'] }],
-      // Ensure no node-only modules are used (as we support browsers too)
+      '@typescript-eslint/no-explicit-any': 'error',
+      '@typescript-eslint/no-unsafe-assignment': 'warn',
+      '@typescript-eslint/no-unsafe-call': 'warn',
+      '@typescript-eslint/no-unsafe-member-access': 'warn',
+      '@typescript-eslint/no-unsafe-return': 'warn',
+      '@typescript-eslint/no-unnecessary-condition': 'error',
+      '@typescript-eslint/no-unnecessary-type-assertion': 'error',
+      '@typescript-eslint/prefer-nullish-coalescing': 'error',
+      '@typescript-eslint/prefer-optional-chain': 'error',
+      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
+      '@typescript-eslint/no-empty-function': ['error', { allow: ['arrowFunctions'] }],
+      '@typescript-eslint/require-await': 'error',
+      '@typescript-eslint/unbound-method': 'error',
+      '@typescript-eslint/strict-boolean-expressions': 'error',
+
+      // Modern JavaScript/TypeScript features
+      'no-var': 'error',
+      'prefer-const': 'error',
+      eqeqeq: ['error', 'always'],
+      'no-nested-ternary': 'error',
+
+      // Import organization and quality
+      'import/order': [
+        'error',
+        {
+          groups: ['builtin', 'external', 'internal', 'parent', 'sibling', 'index'],
+          'newlines-between': 'always',
+        },
+      ],
+      'import/no-cycle': 'error',
       'import/no-nodejs-modules': ['error'],
+
+      // Promise handling
+      '@typescript-eslint/no-floating-promises': 'error',
+      'promise/always-return': 'error',
+      'promise/catch-or-return': 'error',
+
+      // Node.js compatibility
+      'n/no-missing-import': 'off', // Handled by TypeScript
+      'n/no-unsupported-features/node-builtins': ['error', { ignores: ['CloseEvent'] }],
+
+      // Code structure and maintainability
+      'max-lines-per-function': ['error', 50],
+      'max-params': ['error', 4],
     },
     settings: {
-      // Enhanced for import plugin (ensures TS paths resolve without extensions)
       'import/resolver': {
-        typescript: { project: './tsconfig.json' }, // Explicitly point to tsconfig for path mappings/aliases if any
+        typescript: { project: './tsconfig.json' },
         node: true,
       },
     },
   },
-];
+);

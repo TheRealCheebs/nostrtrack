@@ -1,5 +1,6 @@
 import inquirer from 'inquirer';
 import chalk from 'chalk';
+
 import { listRelays, modifyRelays } from '../settings';
 
 export async function mainSettingsFlow() {
@@ -35,7 +36,7 @@ async function listRelaysFlow() {
     return;
   }
   console.log(chalk.bold.blue('Relays:'));
-  relays.forEach((relay: String) => {
+  relays.forEach((relay: string) => {
     console.log(`${chalk.cyan(relay)}`);
   });
 }

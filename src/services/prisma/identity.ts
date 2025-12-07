@@ -1,27 +1,28 @@
 import keytar from 'keytar';
 import { bytesToHex, hexToBytes } from '@noble/hashes/utils';
-import { PrismaClient } from '@prisma/client';
-import type { Identity as PrismaIdentity } from '@prisma/client';
+import { type PrismaClient, type Identity as PrismaIdentity } from '@prisma/client';
+
 import type { UserKeys } from '../../interfaces/identity';
 
 const SERVICE_NAME = 'nostrtrack';
 
-export async function getActiveUserKeys(prisma: PrismaClient): Promise<UserKeys | null> {
+export async function getActiveUserKeys(prisma: PrismaClient): Promise<UserKeys> {
+  const emptyUserKeys: UserKeys = { pubKey: '', privateKey: new Uint8Array() };
   try {
-    const activeUser = await getActiveIdentity(prisma);
-    if (!activeUser) {
-      return null;
+    const activeUser: PrismaIdentity | null = await getActiveIdentity(prisma);
+    if (activeUser === null) {
+      return emptyUserKeys;
     }
-    const userPubkey = activeUser.pubkey;
-    const userPrivateKey = await getPrivateKey(userPubkey);
+    const userPubkey: string = activeUser.pubkey;
+    const userPrivateKey: Uint8Array | null = await getPrivateKey(userPubkey);
     if (!userPrivateKey) {
-      return null;
+      return emptyUserKeys;
     }
 
     return { pubKey: userPubkey, privateKey: userPrivateKey };
   } catch (error) {
     console.error('Error in getActiveUserKeys:', error);
-    return null;
+    return emptyUserKeys;
   }
 }
 
@@ -276,9 +277,8 @@ export async function getUserProjects(
     if (typeof user.projects === 'string') {
       const projects: Map<string, boolean> = new Map(Object.entries(JSON.parse(user.projects)));
       return projects;
-    } else {
-      throw new Error('Expected user.projects to be a string.');
     }
+    throw new Error('Expected user.projects to be a string.');
   } catch (error) {
     console.error('Error fetching projects:', error);
     throw error;

@@ -17,6 +17,6 @@
     "rootDir": "src", // Specify the source directory
     "types": ["node"] // Include Node.js types
   },
-  "include": ["src/**/*"], // Include all TypeScript files in `src`
+  "include": ["src/**/*", "src/types/**/*"],
   "exclude": ["node_modules", "dist"] // Exclude dependencies
 }

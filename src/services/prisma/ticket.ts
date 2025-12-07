@@ -1,5 +1,5 @@
-import { PrismaClient } from '@prisma/client';
-import type { Ticket as PrismaTicket } from '@prisma/client';
+import { type PrismaClient, type Ticket as PrismaTicket } from '@prisma/client';
+
 import type { Ticket } from '../../interfaces/ticket';
 
 async function syncWithRelay() {

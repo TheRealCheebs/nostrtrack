@@ -48,6 +48,7 @@
     "@vitest/ui": "^3.2.4",
     "eslint": "^9.39.1",
     "eslint-config-prettier": "^10.1.8",
+    "eslint-import-resolver-typescript": "^4.4.4",
     "eslint-plugin-import": "^2.32.0",
     "eslint-plugin-n": "^17.23.1",
     "eslint-plugin-prettier": "^5.5.4",
@@ -57,7 +58,7 @@
     "jiti": "^2.6.1",
     "prettier": "^3.7.3",
     "prisma": "^6.17.0",
-    "typescript-eslint": "^8.48.0",
+    "typescript-eslint": "^8.48.1",
     "vitest": "^3.2.4"
   }
 }

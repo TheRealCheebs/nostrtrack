@@ -1,28 +1,22 @@
 import { v4 as uuidv4 } from 'uuid';
-import type { Project } from '../interfaces/project';
+
+import type { Project, ProjectMember } from '../interfaces/project';
 
 export function createProject(
+  projectId: string = uuidv4(),
   name: string,
   creatorPubkey: string,
   description: string,
   isPrivate: boolean = false,
-  members: { pubkey: string; role?: string }[] = [],
+  members: Array<ProjectMember> = [],
 ): Project {
   // Always add the creator as admin
   const allMembers = [
-    { pubkey: creatorPubkey, role: 'admin' },
-    ...members.filter((m) => m.pubkey !== creatorPubkey),
+    { projectId: projectId, pubkey: creatorPubkey, role: 'admin', createdAt: Math.floor(Date.now() / 1000) },
+    ...members.filter((m) => m.pubKey !== creatorPubkey),
   ];
 
-  const projectId = uuidv4();
-  const createdTime = Number(Date.now());
-
-  const projectMembers = allMembers.map((member) => ({
-    projectId: projectId,
-    pubKey: member.pubkey,
-    role: member.role === null || member.role === undefined ? 'member' : member.role,
-    createdAt: createdTime,
-  }));
+  const createdTime = Number(Math.floor(Date.now() / 1000));
 
   return {
     uuid: projectId,
@@ -32,7 +26,7 @@ export function createProject(
     createdAt: createdTime,
     lastEventId: '',
     lastEventCreatedAt: createdTime,
-    members: projectMembers,
+    members: allMembers,
     tickets: [],
   } as Project; // Ensure the returned object matches the Project type
 }
