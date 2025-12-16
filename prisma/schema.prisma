@@ -8,19 +8,19 @@ datasource db {
 }
 
 model Identity {
-  pubkey     String   @id
-  name       String   @unique
+  pubkey     String  @id
+  name       String  @unique
   created_at BigInt
   last_used  BigInt
-  is_active  Boolean  @default(true)
-  projects   Json      // map[project-uuid] is_private
+  is_active  Boolean @default(true)
+  projects   Json
 }
 
 model Project {
-  uuid                  String    @id
+  uuid                  String          @id
   name                  String
   description           String
-  is_private            Boolean   @default(false)
+  is_private            Boolean         @default(false)
   created_at            BigInt
   last_event_id         String
   last_event_created_at BigInt
@@ -29,46 +29,48 @@ model Project {
 }
 
 model ProjectMember {
-  project_uuid  String
-  pubkey        String
-  role          String    @default("admin")
-  created_at    BigInt
-  project       Project   @relation(fields: [project_uuid], references: [uuid], onDelete: Cascade)
+  project_uuid String
+  pubkey       String
+  role         String  @default("member")
+  created_at   BigInt
+  project      Project @relation(fields: [project_uuid], references: [uuid], onDelete: Cascade)
+
   @@id([project_uuid, pubkey])
 }
 
 model Ticket {
-  uuid                  String    @id
+  uuid                  String            @id
   project_uuid          String
   type                  String
   title                 String
   description           String
-  state                 String    @default("unscheduled")
+  state                 String            @default("unscheduled")
   parent_uuid           String?
-  children_uuids        Json      // this is a list of strings
+  children_uuids        Json
   creator_pubkey        String
   created_at            BigInt
   updated_at            BigInt
   last_event_id         String
   last_event_created_at BigInt
-  project               Project   @relation(fields: [project_uuid], references: [uuid], onDelete: Cascade)
-  parent                Ticket?   @relation("TicketParent", fields: [parent_uuid], references: [uuid], onDelete: SetNull)
-  children              Ticket[]  @relation("TicketParent")
-  referencesFrom        TicketReference[] @relation("SourceTicket")
+  parent                Ticket?           @relation("TicketParent", fields: [parent_uuid], references: [uuid])
+  children              Ticket[]          @relation("TicketParent")
+  project               Project           @relation(fields: [project_uuid], references: [uuid], onDelete: Cascade)
   referencesTo          TicketReference[] @relation("TargetTicket")
+  referencesFrom        TicketReference[] @relation("SourceTicket")
 }
 
 model TicketReference {
-  source_ticket_uuid  String
-  target_ticket_uuid  String
-  reference_type      String
-  created_at          BigInt
-  source_ticket       Ticket @relation("SourceTicket", fields: [source_ticket_uuid], references: [uuid], onDelete: Cascade)
-  target_ticket       Ticket @relation("TargetTicket", fields: [target_ticket_uuid], references: [uuid], onDelete: Cascade)
+  source_ticket_uuid String
+  target_ticket_uuid String
+  reference_type     String
+  created_at         BigInt
+  target_ticket      Ticket @relation("TargetTicket", fields: [target_ticket_uuid], references: [uuid], onDelete: Cascade)
+  source_ticket      Ticket @relation("SourceTicket", fields: [source_ticket_uuid], references: [uuid], onDelete: Cascade)
+
   @@id([source_ticket_uuid, target_ticket_uuid, reference_type])
 }
 
 model ProcessedEvent {
-  event_id    String   @id
+  event_id    String @id
   received_at BigInt
 }

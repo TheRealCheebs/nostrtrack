@@ -1,6 +1,7 @@
 import { v4 as uuidv4 } from 'uuid';
 
 import type { Project, ProjectMember } from '../interfaces/project';
+import { createProjectMember } from './nostr/projects';
 
 export function createProject(
   projectId: string = uuidv4(),
@@ -12,8 +13,8 @@ export function createProject(
 ): Project {
   // Always add the creator as admin
   const allMembers = [
-    { projectId: projectId, pubkey: creatorPubkey, role: 'admin', createdAt: Math.floor(Date.now() / 1000) },
-    ...members.filter((m) => m.pubKey !== creatorPubkey),
+    createProjectMember(projectId, creatorPubkey, 'admin'),
+    ...members.filter((m) => m.pubkey !== creatorPubkey),
   ];
 
   const createdTime = Number(Math.floor(Date.now() / 1000));

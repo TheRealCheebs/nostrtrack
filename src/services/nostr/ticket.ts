@@ -31,7 +31,7 @@ export async function createAndPublishPrivateTicket(
   // Create gift wraps for each member
   const wraps = [];
   for (const member of projectMembers) {
-    const converKey = nip44.getConversationKey(userKeys.privateKey, member.pubKey); // Ensure conversation key exists
+    const converKey = nip44.getConversationKey(userKeys.privateKey, member.pubkey); // Ensure conversation key exists
     const nonce = randomBytes(24); // 24 random bytes
     const wrap = finalizeEvent(
       {
@@ -39,7 +39,7 @@ export async function createAndPublishPrivateTicket(
         created_at: Math.floor(Date.now() / 1000),
         content: nip44.encrypt(JSON.stringify(rumor), converKey, nonce),
         tags: [
-          ['p', member.pubKey],
+          ['p', member.pubkey],
           ['project-uuid', ticket.projectUuid],
           ['type', 'ticket'],
         ],

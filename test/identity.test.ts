@@ -170,7 +170,7 @@ describe('Identity service (prisma)', () => {
   });
 
   describe('getActiveUserKeys', () => {
-    it('returns pubKey and privateKey when active identity exists', async () => {
+    it('returns pubkey and privateKey when active identity exists', async () => {
       const { prisma, mockIdentity } = makeMockPrisma();
       const pub = 'pubactiveuser';
       const hex = 'cafebabe';
@@ -187,7 +187,7 @@ describe('Identity service (prisma)', () => {
       const res = await getActiveUserKeys(prisma as any);
       expect(res).not.toBeNull();
       if (!res) throw new Error('Expected res');
-      expect(res.pubKey).toBe(pub);
+      expect(res.pubkey).toBe(pub);
       expect(Buffer.from(res.privateKey).toString('hex')).toBe(hex);
     });
 

@@ -3,7 +3,7 @@ import { UserKeys } from '../interfaces/identity';
 
 
 class UserState {
-  private userKeys: UserKeys = { pubKey: '', privateKey: new Uint8Array() };
+  private userKeys: UserKeys = { pubkey: '', privateKey: new Uint8Array() };
   private userName: string | null = null;
   private activeProject: string = '';
   private subscribers: Array<() => void> = [];
@@ -12,7 +12,7 @@ class UserState {
   setUserKeys(newKeys: UserKeys) {
     if (this.userKeys !== newKeys) {
       this.userKeys = newKeys;
-      this.userName = newKeys ? getPublicName(newKeys.pubKey) : null;
+      this.userName = newKeys ? getPublicName(newKeys.pubkey) : null;
       this.notifySubscribers();
     }
   }
@@ -23,7 +23,7 @@ class UserState {
 
   getPubKey(): string {
     if (!this.userKeys) return '';
-    return this.userKeys.pubKey;
+    return this.userKeys.pubkey;
   }
 
   // Get the current userName

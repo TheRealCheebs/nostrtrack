@@ -12,7 +12,7 @@ export interface Project {
 
 export interface ProjectMember {
   projectId: string;
-  pubKey: string;
+  pubkey: string;
   role: string;
   createdAt: number;
 }

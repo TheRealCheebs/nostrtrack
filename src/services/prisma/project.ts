@@ -5,6 +5,7 @@ import {
 } from '@prisma/client';
 
 import type { Project, ProjectMember } from '../../interfaces/project';
+import { NullablePrismaProjectWithDetails, PrismaProjectWithDetails } from '../../types/project';
 
 export async function saveNewProject(
   prisma: PrismaClient,
@@ -24,8 +25,8 @@ export async function saveNewProject(
       last_event_id: '',
       last_event_created_at: createdAt,
       members: {
-        create: members.map((member) => ({
-          pubkey: member.pubKey,
+        create: members.map((member: ProjectMember) => ({
+          pubkey: member.pubkey,
           role: member.role,
           created_at: member.createdAt,
         })),
@@ -34,14 +35,14 @@ export async function saveNewProject(
   });
 }
 
-export async function getProjects(prisma: PrismaClient, pubKey: string): Promise<PrismaProject[]> {
+export async function getProjects(prisma: PrismaClient, pubkey: string): Promise<PrismaProject[]> {
   return await prisma.project.findMany({
     where: {
       OR: [
         {
           members: {
             some: {
-              pubkey: pubKey, // pubkey needs to be a member
+              pubkey: pubkey, // pubkey needs to be a member
             },
           },
         },
@@ -88,13 +89,7 @@ export async function getTicketUuidsByProjectUuid(
 export async function getProjectById(
   prisma: PrismaClient,
   uuid: string,
-): Promise<
-  | (PrismaProject & {
-      members: PrismaProjectMember[];
-      tickets: Array<{ uuid: string }>;
-    })
-  | null
-> {
+): Promise<NullablePrismaProjectWithDetails> {
   return await prisma.project.findUnique({
     where: { uuid },
     include: {
@@ -221,7 +216,7 @@ export async function updateProject(prisma: PrismaClient, project: Project): Pro
       members: {
         deleteMany: {}, // Remove all existing members
         create: members.map((member) => ({
-          pubkey: member.pubKey,
+          pubkey: member.pubkey,
           role: member.role,
           created_at: member.createdAt,
         })),
@@ -236,19 +231,14 @@ export async function updateProject(prisma: PrismaClient, project: Project): Pro
 function prismaToProjectMember(prismaMember: PrismaProjectMember): ProjectMember {
   return {
     projectId: prismaMember.project_uuid,
-    pubKey: prismaMember.pubkey,
+    pubkey: prismaMember.pubkey,
     role: prismaMember.role,
     createdAt: Number(prismaMember.created_at), // Convert bigint to number
   };
 }
 
 // Main function to map Prisma Project to general Project
-export function prismaToProject(
-  prismaProject: PrismaProject & {
-    members: PrismaProjectMember[];
-    tickets: Array<{ uuid: string }>;
-  },
-): Project {
+export function prismaToProject(prismaProject: PrismaProjectWithDetails): Project {
   return {
     uuid: prismaProject.uuid,
     name: prismaProject.name,

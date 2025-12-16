@@ -14,13 +14,16 @@ export function createProjectMemberFromNPub(npub: string, role: string, projectU
   }
   const pubkey: string = decoded.data;
 
+  return createProjectMember(projectUuid, pubkey, role);
+}
+
+export function createProjectMember(projectId: string, pubkey: string, role: string): ProjectMember {
   return {
-    projectId: projectUuid,
-    pubKey: pubkey,
+    projectId: projectId,
+    pubkey: pubkey,
     role: role,
     createdAt: Math.floor(Date.now() / 1000),
   } as ProjectMember;
-
 }
 
 export async function publishProject(project: Project, userKeys: UserKeys): Promise<Project> {
@@ -63,7 +66,7 @@ export async function createAndPublishPrivateProject(
   // Create gift wraps for each member
   const wraps = [];
   for (const member of projectMembers) {
-    const converKey = nip44.getConversationKey(userKeys.privateKey, member.pubKey); // Ensure conversation key exists
+    const converKey = nip44.getConversationKey(userKeys.privateKey, member.pubkey); // Ensure conversation key exists
     const nonce = randomBytes(24); // 24 random bytes
     const wrap = finalizeEvent(
       {
@@ -71,7 +74,7 @@ export async function createAndPublishPrivateProject(
         created_at: Math.floor(Date.now() / 1000),
         content: nip44.encrypt(JSON.stringify(rumor), converKey, nonce),
         tags: [
-          ['p', member.pubKey],
+          ['p', member.pubkey],
           ['project-uuid', project.uuid],
           ['type', 'project'],
         ],
@@ -117,7 +120,7 @@ export async function updateAndPublishPrivateProject(
   // Create gift wraps for each member
   const wraps = [];
   for (const member of projectMembers) {
-    const converKey = nip44.getConversationKey(userKeys.privateKey, member.pubKey); // Ensure conversation key exists
+    const converKey = nip44.getConversationKey(userKeys.privateKey, member.pubkey); // Ensure conversation key exists
     const nonce = randomBytes(24); // 24 random bytes
     const wrap = finalizeEvent(
       {
@@ -125,7 +128,7 @@ export async function updateAndPublishPrivateProject(
         created_at: Math.floor(Date.now() / 1000),
         content: nip44.encrypt(JSON.stringify(rumor), converKey, nonce),
         tags: [
-          ['p', member.pubKey],
+          ['p', member.pubkey],
           ['project-uuid', project.uuid],
           ['type', 'project'],
         ],

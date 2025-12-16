@@ -1,5 +1,5 @@
 export interface Identity {
-  pubKey: string;
+  pubkey: string;
   name: string;
   createdAt: number;
   lastUsed: number;
@@ -8,6 +8,6 @@ export interface Identity {
 }
 
 export type UserKeys = {
-  pubKey: string;
+  pubkey: string;
   privateKey: Uint8Array;
 };

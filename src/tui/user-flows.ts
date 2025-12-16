@@ -14,7 +14,7 @@ import type { UserKeys } from '../interfaces/identity';
 import { convertForNIP19, createKeys, importKeys, getPublicName, getNpub } from '../nostr/utils';
 import { userState } from '../state/user-state';
 
-const emptyUserKeys: UserKeys = { pubKey: '', privateKey: new Uint8Array() };
+const emptyUserKeys: UserKeys = { pubkey: '', privateKey: new Uint8Array() };
 
 export async function mainUsersFlow(prisma: PrismaClient): Promise<void> {
   const USER_OPTIONS = [
@@ -121,14 +121,14 @@ async function createUser(prisma: PrismaClient): Promise<UserKeys | null> {
 
 async function importUser(prisma: PrismaClient): Promise<UserKeys | null> {
   const answers: string = await input({
-    message: 'private key: nsec',
+    message: 'private key (nsec):',
     required: true,
     validate: (input) => input.trim() !== '' || 'private key is required',
   });
 
   try {
     const userKeys: UserKeys = importKeys(answers);
-    const name: string = getPublicName(userKeys.pubKey);
+    const name: string = getPublicName(userKeys.pubkey);
     const identity: PrismaIdentity = await createIdentity(prisma, name, userKeys);
 
     const readable: { nsec: string; npub: string } = convertForNIP19(userKeys);
@@ -150,7 +150,7 @@ async function importUser(prisma: PrismaClient): Promise<UserKeys | null> {
 
 async function exportUser(prisma: PrismaClient): Promise<void> {
   const keys: UserKeys = await getActiveUserKeys(prisma);
-  if (keys.pubKey === '') {
+  if (keys.pubkey === '') {
     console.log(chalk.yellow('There is not an active user.'));
     return;
   }
@@ -200,7 +200,7 @@ async function switchUser(prisma: PrismaClient): Promise<UserKeys | null> {
   const userPrivateKey: Uint8Array | null = await getPrivateKey(identity.pubkey);
   if (userPrivateKey === null) return null;
 
-  const newUserKeys = { pubKey: identity.pubkey, privateKey: userPrivateKey };
+  const newUserKeys = { pubkey: identity.pubkey, privateKey: userPrivateKey };
   userState.setUserKeys(newUserKeys); // Update the global state here
   return newUserKeys;
 }

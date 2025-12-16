@@ -77,7 +77,7 @@ export function subscribeToPrivateProjectUpdates(
     kinds: [NOSTR_GIFT_WRAP_KIND],
     ['#project-uuid']: [projectUuid],
     ['#type']: ['project'],
-    ['#p']: [userKeys.pubKey],
+    ['#p']: [userKeys.pubkey],
     since: lastSyncTime || Math.floor(Date.now() / 1000),
   };
 
@@ -205,7 +205,7 @@ export function subscribeToPrivateTicketUpdates(
     ['#project-uuid']: [projectUuid],
     ['#ticket-uuid']: [ticketUuid],
     ['#type']: ['ticket'],
-    ['#p']: [userKeys.pubKey],
+    ['#p']: [userKeys.pubkey],
     since: lastSyncTime || Math.floor(Date.now() / 1000),
   };
 

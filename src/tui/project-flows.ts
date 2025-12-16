@@ -1,10 +1,11 @@
 import { rawlist, input, confirm } from '@inquirer/prompts';
 import chalk from 'chalk';
 import { v4 as uuidv4 } from 'uuid';
-import { type PrismaClient, type Project as PrismaProject } from '@prisma/client';
+import { type PrismaClient, type Project as PrismaProject, type Ticket as PrismaTicket, type ProjectMember as PrismaProjectMember } from '@prisma/client';
+import { NullablePrismaProjectWithDetails, PrismaProjectWithDetails } from '../../types/project';
 
 import { createProject } from '../services/project';
-import { saveNewProject, getProjects } from '../services/prisma/project';
+import { saveNewProject, getProjects, getProjectById } from '../services/prisma/project';
 import {
   publishProject,
   createProjectMemberFromNPub,
@@ -73,7 +74,7 @@ export async function mainProjectsFlow(prisma: PrismaClient) {
 
 async function createProjectFlow(prisma: PrismaClient) {
   const userKeys = userState.getUserKeys();
-  if (!userKeys) {
+  if (userKeys.pubkey == '') {
     console.log(chalk.red('No user keys found, please load userKeys'));
     return;
   }
@@ -133,7 +134,7 @@ async function createProjectFlow(prisma: PrismaClient) {
   let project = createProject(
     projectId,
     name,
-    userKeys.pubKey,
+    userKeys.pubkey,
     description,
     isPrivate,
     members,
@@ -189,26 +190,59 @@ function printPrismaProjectList(projects: PrismaProject[]) {
   console.log(table);
 }
 
+// TODO: move this
+function printPrismaTicketList(tickets: PrismaTicket[]) {
+  const columnWidths = {
+    uuid: 40,
+    title: 20,
+    updated: 25,
+    state: 10,
+    type: 10,
+  };
+
+  // Create the header
+  const header = [
+    'Ticket UUID'.padEnd(columnWidths.uuid),
+    'Title'.padEnd(columnWidths.title),
+    'Updated'.padEnd(columnWidths.updated),
+    'State'.padEnd(columnWidths.state),
+    'Type'.padEnd(columnWidths.type),
+  ].join(' | ');
+
+  const rows = tickets.map((ticket) => {
+    const updatedDate = new Date(Number(ticket.last_event_created_at) * 1000).toISOString();
+
+    return [
+      ticket.uuid.padEnd(columnWidths.uuid),
+      ticket.title.padEnd(columnWidths.title),
+      updatedDate.padEnd(columnWidths.updated),
+      ticket.state.padEnd(columnWidths.state),
+      ticket.type.padEnd(columnWidths.type),
+    ].join(' | ');
+  });
+  const table = [header, '-'.repeat(header.length), ...rows].join('\n');
+  console.log(table);
+}
+
 export async function listLocalProjectsFlow(prisma: PrismaClient) {
-  const pubKey = userState.getPubKey();
-  if (pubKey === '') {
+  const pubkey = userState.getPubKey();
+  if (pubkey === '') {
     console.log(chalk.yellow('No pubkey found, please load userKeys'));
     return;
   }
-  const projects: PrismaProject[] = await getProjects(prisma, pubKey);
+  const projects: PrismaProject[] = await getProjects(prisma, pubkey);
 
   if (projects.length === 0) {
     console.log('No projects found.');
     return;
   }
 
-  console.log(chalk.blue(`Projects ${getNpub(pubKey)} has locally saved:`));
+  console.log(chalk.blue(`Projects ${getNpub(pubkey)} has locally saved:`));
 
   printPrismaProjectList(projects);
 
   const conf = await confirm({
     message: 'View Project Details',
-    default: false,
   });
 
   if (conf === false) {
@@ -237,12 +271,12 @@ export async function listLocalProjectsFlow(prisma: PrismaClient) {
 }
 
 export async function switchProjectsFlow(prisma: PrismaClient) {
-  const pubKey = userState.getPubKey();
-  if (pubKey === '') {
+  const pubkey = userState.getPubKey();
+  if (pubkey === '') {
     console.log(chalk.yellow('No pubkey found, please load userKeys'));
   }
 
-  const projects: PrismaProject[] = await getProjects(prisma, pubKey);
+  const projects: PrismaProject[] = await getProjects(prisma, pubkey);
 
   if (projects.length === 0) {
     console.log(chalk.yellow('No projects found.'));
@@ -272,52 +306,51 @@ export async function switchProjectsFlow(prisma: PrismaClient) {
 }
 
 export async function getProjectDetails(prisma: PrismaClient, projectId: string): Promise<void> {
+  const activeUser = userState.getUserKeys();
   try {
-    // Fetch the project details, including members and tickets
-    const project = await prisma.project.findUnique({
-      where: { uuid: projectId },
-      include: {
-        members: true, // Include project members
-        tickets: true, // Include project tickets
-      },
-    });
+    const project: NullablePrismaProjectWithDetails = await getProjectById(prisma, projectId);
 
-    if (!project) {
+    if (project === null) {
       console.log(chalk.yellow('Project not found.'));
       return;
     }
 
-    console.log(`Project: ${project.name}`);
+    const isUserInProject = project.members.some((member: ProjectMember) => member.pubkey === activeUser.pubkey);
+    if (project.is_private === true && isUserInProject === false) {
+      console.log(chalk.yellow('User cannot view private project details.'));
+      return;
+    }
+
+    console.log(`Project Name: ${project.name}`);
     console.log(`Description: ${project.description}`);
     console.log(`Private: ${project.is_private ? 'Yes' : 'No'}`);
     console.log(`Last Event ID: ${project.last_event_id}`);
     console.log(`Last Time: ${formatNostrTimestamp(project.last_event_created_at)}`);
 
+
     // List project tickets
-    console.log('Tickets:');
+    console.log(chalk.blue('Tickets:'));
     if (project.tickets.length > 0) {
-      project.tickets.forEach((ticket) => {
-        console.log(`\t${ticket.state}: ${ticket.title}`);
-      });
+      printPrismaTicketList(project.tickets);
     } else {
-      console.log('\tNo tickets available.');
+      console.log(chalk.yellow('\tNo tickets available.'));
     }
 
     // If the project is not private, show admin members
-    if (!project.is_private) {
-      console.log('Admin Members:');
-      const adminMembers = project.members.filter((member) => member.role === 'admin');
+    if (project.is_private === false) {
+      console.log(chalk.blue('Admin Members:'));
+      const adminMembers: ProjectMember[] = project.members.filter((member: ProjectMember) => member.role === 'admin');
       if (adminMembers.length > 0) {
-        adminMembers.forEach((admin) => {
-          console.log(`\t- ${admin.pubkey}`);
+        adminMembers.forEach((admin: ProjectMember) => {
+          console.log(`\t- ${getNpub(admin.pubkey)}`);
         });
       } else {
-        console.log('\tNo admin members.');
+        console.log(chalk.yellow('\tNo admin members.'));
       }
     } else {
       // List project members on private projects
-      console.log('Members:');
-      project.members.forEach((member) => {
+      console.log(chalk.blue('Members:'));
+      project.members.forEach((member: ProjectMember) => {
         console.log(`\t- ${member.pubkey} (${member.role})`);
       });
     }
@@ -331,52 +364,54 @@ async function showAllProjectsOnRelayFlow(): Promise<void> {
     {
       message: 'Number of projects to show',
       validate: (input) => Number.isInteger(Number(input)) || 'Must be a valid integer',
+      default: '10',
     },
   );
 
   const projects: Project[] = await getAllProjectsFromRelay(Number(limit));
 
   projects.forEach((project) => {
-    const date = new Date(project.lastEventCreatedAt * 1000); // Convert milliseconds to a Date object
-    // Format the date to a readable string
-    console.log(`Project: ${project.name}`);
+    console.log(`Project Name: ${project.name}`);
     console.log(`Description: ${project.description}`);
     console.log(`Private: ${project.isPrivate ? 'Yes' : 'No'}`);
     console.log(`Last Event ID: ${project.lastEventId}`);
-    console.log(`Last Time: ${date.toLocaleString()}`);
+    console.log(`Last Time: ${formatNostrTimestamp(BigInt(project.lastEventCreatedAt))}`);
+
 
     // List project tickets
-    // console.log("Tickets:");
-    // if (project.tickets.length > 0) {
-    //   project.tickets.forEach((ticket) => {
-    //     console.log(`${ticket}`);
-    //   });
-    // } else {
-    //   console.log("  No tickets available.");
-    // }
+    console.log(chalk.blue('Tickets:'));
+    if (project.tickets.length > 0) {
+      project.tickets.forEach((ticket) => {
+        console.log(`${ticket}`);
+      });
+    } else {
+      console.log(chalk.yellow('\tNo tickets available.'));
+    }
 
-    // The project is not private, show admin members
-    if (!project.isPrivate) {
-      console.log('Admin Members:');
-      const adminMembers = project.members.filter((member) => member.role === 'admin');
+    // If the project is not private, show admin members
+    if (project.isPrivate === false) {
+      console.log(chalk.blue('Admin Members:'));
+      const adminMembers: ProjectMember[] = project.members.filter((member: ProjectMember) => member.role === 'admin');
+      console.log(adminMembers);
       if (adminMembers.length > 0) {
-        adminMembers.forEach((admin) => {
-          console.log(`\t- ${admin.pubKey}`);
+        adminMembers.forEach((admin: ProjectMember) => {
+          console.log(`\t- ${getNpub(admin.pubkey)}`);
         });
       } else {
-        console.log('\tNo admin members.');
+        console.log(chalk.yellow('\tNo admin members.'));
       }
     }
+    console.log('\n');
   });
 }
 
 async function showAllTicketsInProjectFromRelayFlow(prisma: PrismaClient): Promise<void> {
-  const pubKey = userState.getPubKey();
-  if (pubKey === '') {
+  const pubkey = userState.getPubKey();
+  if (pubkey === '') {
     console.log('No pubkey found, please load userKeys');
     return;
   }
-  const projects = await getProjects(prisma, pubKey);
+  const projects = await getProjects(prisma, pubkey);
 
   if (projects.length === 0) {
     console.log('No projects found.');

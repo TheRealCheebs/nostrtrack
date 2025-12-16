@@ -20,7 +20,7 @@ export async function subscribeAllForUser(
   relays: string[],
 ): Promise<void> {
   // use the list projects to iterate through and subscribe to all current projects
-  const projects = await getUserProjects(prisma, userKeys.pubKey);
+  const projects = await getUserProjects(prisma, userKeys.pubkey);
   for (const [projectUuid, isPrivate] of projects) {
     if (isPrivate) {
       const ppsc: SubCloser = subscribeToPrivateProjectUpdates(

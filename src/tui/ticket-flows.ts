@@ -73,7 +73,7 @@ export async function mainTicketsFlow(prisma: PrismaClient) {
 
 async function createTicketFlow(prisma: PrismaClient): Promise<string | null> {
   const userKeys = userState.getUserKeys();
-  if (userKeys.pubKey === '') {
+  if (userKeys.pubkey === '') {
     console.log(chalk.red('No user keys found, please load userKeys'));
     return null;
   }
@@ -106,7 +106,7 @@ async function createTicketFlow(prisma: PrismaClient): Promise<string | null> {
     ticketType,
     title,
     description,
-    userKeys.pubKey,
+    userKeys.pubkey,
     parentUuid,
   );
 

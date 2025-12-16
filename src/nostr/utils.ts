@@ -32,9 +32,9 @@ export async function initNostr(relayUrls: string[]): Promise<void> {
 
 export function createKeys(): UserKeys {
   const userPrivateKey = generateSecretKey();
-  const pubKey = getPublicKey(userPrivateKey);
+  const pubkey = getPublicKey(userPrivateKey);
 
-  return { pubKey: pubKey, privateKey: userPrivateKey };
+  return { pubkey: pubkey, privateKey: userPrivateKey };
 }
 
 export function importKeys(nsec: string): UserKeys {
@@ -44,9 +44,9 @@ export function importKeys(nsec: string): UserKeys {
       throw new Error('Only nsec keys are accepted.');
     }
 
-    const pubKey: string = getPublicKey(decoded.data);
+    const pubkey: string = getPublicKey(decoded.data);
 
-    return { pubKey: pubKey, privateKey: decoded.data };
+    return { pubkey: pubkey, privateKey: decoded.data };
   } catch (error) {
     console.error('Invalid nsec provided:', error);
     throw new Error('Invalid nsec provided.');
@@ -69,13 +69,13 @@ function parseProfile(content: string): Profile | null {
   }
 }
 
-export function getPublicName(pubKey: string): string {
+export function getPublicName(pubkey: string): string {
   const pool = new SimplePool();
   const relays = ['wss://relay.damus.io']; // Add more relays
   let name = '';
 
   const filter = {
-    authors: [pubKey],
+    authors: [pubkey],
     kinds: [0],
     limit: 1,
   };
@@ -93,7 +93,7 @@ export function getPublicName(pubKey: string): string {
   });
   // if the userName doesn't come back show the npub
   if (name === '') {
-    name = getNpub(pubKey);
+    name = getNpub(pubkey);
   }
   return name;
 }
@@ -108,7 +108,7 @@ export function convertForNIP19(userKeys: UserKeys): {
   npub: string;
 } {
   const nsec = nip19.nsecEncode(userKeys.privateKey);
-  const npub = getNpub(userKeys.pubKey);
+  const npub = getNpub(userKeys.pubkey);
 
   return { nsec, npub };
 }

@@ -86,7 +86,7 @@ async function initializeApp(prisma: PrismaClient): Promise<boolean> {
   initializeDatabase();
 
   let userKeys: UserKeys = await getActiveUserKeys(prisma);
-  while (userKeys.pubKey === '') {
+  while (userKeys.pubkey === '') {
     userKeys = await noUserFlow(prisma);
   }
 

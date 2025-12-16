@@ -30,11 +30,11 @@ vi.mock('../src/services/prisma/identity', () => ({
 vi.mock('../src/nostr/utils', () => ({
   convertForNIP19: vi.fn((keys: any) => ({ npub: 'npub', nsec: 'nsec' })),
   createKeys: vi.fn(() => ({
-    pubKey: 'mockPubKey',
+    pubkey: 'mockPubKey',
     privateKey: Uint8Array.from([1, 2, 3]),
   })),
-  getPublicName: vi.fn((pubKey: string) => `mockNameFor:${pubKey}`),
-  getNpub: vi.fn((pubKey: string) => `mockNpubFor:${pubKey}`),
+  getPublicName: vi.fn((pubkey: string) => `mockNameFor:${pubkey}`),
+  getNpub: vi.fn((pubkey: string) => `mockNpubFor:${pubkey}`),
 }));
 
 import * as identity from '../src/services/prisma/identity';
@@ -73,7 +73,7 @@ describe('TUI user flows', () => {
 
     const keys = await noUserFlow({} as any);
     expect(keys).not.toBeNull();
-    expect(keys.pubKey).toBe('pub1');
+    expect(keys.pubkey).toBe('pub1');
     expect(Buffer.from(keys.privateKey).toString('hex')).toBe('010203');
   });
 
@@ -94,7 +94,7 @@ describe('TUI user flows', () => {
 
     const keys = await mainUsersFlow({} as any);
     expect(keys).not.toBeNull();
-    expect(keys.pubKey).toBe('pub1');
+    expect(keys.pubkey).toBe('pub1');
     expect(Buffer.from(keys.privateKey).toString('hex')).toBe('040506');
   });
 
@@ -102,7 +102,7 @@ describe('TUI user flows', () => {
     responses = [{ action: 'Export Active User' }];
 
     (identity.getActiveUserKeys as any).mockResolvedValue({
-      pubKey: 'pubX',
+      pubkey: 'pubX',
       privateKey: Uint8Array.from([7, 8, 9]),
     });
 
@@ -111,6 +111,6 @@ describe('TUI user flows', () => {
     const res = await mainUsersFlow({} as any);
     // mainUsersFlow returns emptyUserKeys in most non-returning actions
     expect(convertForNIP19).toHaveBeenCalled();
-    expect(res.pubKey).toBe('');
+    expect(res.pubkey).toBe('');
   });
 });
