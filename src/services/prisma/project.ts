@@ -35,6 +35,17 @@ export async function saveNewProject(
   });
 }
 
+export async function removeProject(
+  prisma: PrismaClient,
+  projectUuid: string,
+) {
+  return await prisma.project.delete({
+    where: {
+      uuid: projectUuid,
+    }
+  });
+}
+
 export async function getProjects(prisma: PrismaClient, pubkey: string): Promise<PrismaProject[]> {
   return await prisma.project.findMany({
     where: {

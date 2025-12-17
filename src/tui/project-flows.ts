@@ -2,10 +2,10 @@ import { rawlist, input, confirm } from '@inquirer/prompts';
 import chalk from 'chalk';
 import { v4 as uuidv4 } from 'uuid';
 import { type PrismaClient, type Project as PrismaProject, type Ticket as PrismaTicket, type ProjectMember as PrismaProjectMember } from '@prisma/client';
-import { NullablePrismaProjectWithDetails, PrismaProjectWithDetails } from '../../types/project';
+import { NullablePrismaProjectWithDetails } from '../types/project';
 
 import { createProject } from '../services/project';
-import { saveNewProject, getProjects, getProjectById } from '../services/prisma/project';
+import { saveNewProject, removeProject, getProjects, getProjectById } from '../services/prisma/project';
 import {
   publishProject,
   createProjectMemberFromNPub,
@@ -23,11 +23,12 @@ export async function mainProjectsFlow(prisma: PrismaClient) {
   const PROJECT_OPTIONS = [
     'Create Project',
     'Import Project',
+    'Edit Project',
     'Switch Active Project',
     'List Local Projects',
     'Remove Local Project',
     'Show All Remote Projects',
-    'Show Remote Tickets In Active Project',
+    'Show Remote Tickets In Project', // TODO: move this to the ticket flow?
     'Back to Main Menu',
   ] as const;
   type Action = (typeof PROJECT_OPTIONS)[number];
@@ -40,6 +41,10 @@ export async function mainProjectsFlow(prisma: PrismaClient) {
       console.log(chalk.yellow('TODO: Importing project...'));
       return Promise.resolve();
     },
+    'Edit Project': async () => {
+      console.log(chalk.yellow('TODO: Editing project...'));
+      return Promise.resolve();
+    },
     'Switch Active Project': async (prisma) => {
       await switchProjectsFlow(prisma);
     },
@@ -47,13 +52,13 @@ export async function mainProjectsFlow(prisma: PrismaClient) {
       await listLocalProjectsFlow(prisma);
     },
     'Remove Local Project': async () => {
-      console.log(chalk.yellow('TODO: remove local project...'));
-      return Promise.resolve();
+      await removeLocalProjectsFlow(prisma);
     },
     'Show All Remote Projects': async () => {
       await showAllProjectsOnRelayFlow();
     },
-    'Show Remote Tickets In Active Project': async (prisma) => {
+    // TODO: move this into the tickets flow?
+    'Show Remote Tickets In Project': async (prisma) => {
       await showAllTicketsInProjectFromRelayFlow(prisma);
     },
     'Back to Main Menu': async () => {
@@ -159,6 +164,33 @@ async function createProjectFlow(prisma: PrismaClient) {
   }
 }
 
+async function removeLocalProjectsFlow(prisma: PrismaClient) {
+  const selectedProject: string = await selectExistingLocalProject(prisma);
+  if (selectedProject === '') {
+    return;
+  }
+
+  const remove = await confirm({
+    message: `Remove ${selectedProject} from local projects?`,
+    default: false,
+  });
+
+  if (remove === false) {
+    return;
+  }
+
+  try {
+    await removeProject(prisma, selectedProject);
+    console.log(chalk.green(`${selectedProject} removed from local project list`));
+  } catch (error) {
+    if (error instanceof Error) {
+      console.log(chalk.red(`Failed to remove project: ${error.message}`));
+    } else {
+      console.log(chalk.red(`Failed to remove project: ${String(error)}`));
+    }
+  }
+}
+
 function printPrismaProjectList(projects: PrismaProject[]) {
   const columnWidths = {
     uuid: 40,
@@ -233,7 +265,7 @@ export async function listLocalProjectsFlow(prisma: PrismaClient) {
   const projects: PrismaProject[] = await getProjects(prisma, pubkey);
 
   if (projects.length === 0) {
-    console.log('No projects found.');
+    console.log(chalk.yellow('No projects found.'));
     return;
   }
 
@@ -270,16 +302,18 @@ export async function listLocalProjectsFlow(prisma: PrismaClient) {
   await getProjectDetails(prisma, detailedView);
 }
 
-export async function switchProjectsFlow(prisma: PrismaClient) {
+async function selectExistingLocalProject(prisma: PrismaClient): Promise<string> {
   const pubkey = userState.getPubKey();
   if (pubkey === '') {
     console.log(chalk.yellow('No pubkey found, please load userKeys'));
+    return '';
   }
 
   const projects: PrismaProject[] = await getProjects(prisma, pubkey);
 
   if (projects.length === 0) {
     console.log(chalk.yellow('No projects found.'));
+    return '';
   }
 
   const options = projects.map((project) => ({
@@ -296,10 +330,14 @@ export async function switchProjectsFlow(prisma: PrismaClient) {
     choices: options,
   });
 
+  return selectedProject;
+}
+
+export async function switchProjectsFlow(prisma: PrismaClient) {
+  const selectedProject: string = await selectExistingLocalProject(prisma);
   if (selectedProject === '') {
     return;
   }
-
   // TODO: think about a confirm here before switching?
 
   userState.setActiveProject(selectedProject);
@@ -315,7 +353,7 @@ export async function getProjectDetails(prisma: PrismaClient, projectId: string)
       return;
     }
 
-    const isUserInProject = project.members.some((member: ProjectMember) => member.pubkey === activeUser.pubkey);
+    const isUserInProject = project.members.some((member: PrismaProjectMember) => member.pubkey === activeUser.pubkey);
     if (project.is_private === true && isUserInProject === false) {
       console.log(chalk.yellow('User cannot view private project details.'));
       return;
@@ -339,9 +377,9 @@ export async function getProjectDetails(prisma: PrismaClient, projectId: string)
     // If the project is not private, show admin members
     if (project.is_private === false) {
       console.log(chalk.blue('Admin Members:'));
-      const adminMembers: ProjectMember[] = project.members.filter((member: ProjectMember) => member.role === 'admin');
+      const adminMembers: PrismaProjectMember[] = project.members.filter((member: PrismaProjectMember) => member.role === 'admin');
       if (adminMembers.length > 0) {
-        adminMembers.forEach((admin: ProjectMember) => {
+        adminMembers.forEach((admin: PrismaProjectMember) => {
           console.log(`\t- ${getNpub(admin.pubkey)}`);
         });
       } else {
@@ -350,7 +388,7 @@ export async function getProjectDetails(prisma: PrismaClient, projectId: string)
     } else {
       // List project members on private projects
       console.log(chalk.blue('Members:'));
-      project.members.forEach((member: ProjectMember) => {
+      project.members.forEach((member: PrismaProjectMember) => {
         console.log(`\t- ${member.pubkey} (${member.role})`);
       });
     }
@@ -369,6 +407,11 @@ async function showAllProjectsOnRelayFlow(): Promise<void> {
   );
 
   const projects: Project[] = await getAllProjectsFromRelay(Number(limit));
+
+  if (projects.length === 0) {
+    console.log(chalk.yellow('There are no projects on the saved relays'));
+    return;
+  }
 
   projects.forEach((project) => {
     console.log(`Project Name: ${project.name}`);
@@ -406,68 +449,45 @@ async function showAllProjectsOnRelayFlow(): Promise<void> {
 }
 
 async function showAllTicketsInProjectFromRelayFlow(prisma: PrismaClient): Promise<void> {
-  const pubkey = userState.getPubKey();
-  if (pubkey === '') {
-    console.log('No pubkey found, please load userKeys');
-    return;
-  }
-  const projects = await getProjects(prisma, pubkey);
-
-  if (projects.length === 0) {
-    console.log('No projects found.');
-    return;
-  }
-
-  console.table(
-    projects.map((p) => ({
-      ID: p.uuid.slice(0, 8),
-      Name: p.name,
-    })),
-  );
-
-  const { action } = await inquirer.prompt([
-    {
-      type: 'rawlist',
-      name: 'action',
-      message: 'Select an action:',
-      choices: ['Select Project', 'Enter Project', 'Back to Main Menu'],
-    },
-  ]);
-
-  if (action === 'Back to Main Menu') {
-    console.log('Action Canceled, not looking up tickets.');
-    return;
-  }
-
-  let project_uuid: string = '';
-
-  if (action === 'Select Project') {
-    const { project_uuid: selectedProjectUuid } = await inquirer.prompt([
+  const answer = await rawlist({
+    message: 'Select an action:',
+    choices: [
       {
-        type: 'rawlist',
-        name: 'project_uuid',
-        message: 'Select a project:',
-        choices: projects.map((project) => ({
-          name: project.name,
-          value: project.uuid,
-        })),
+        name: 'Select Project',
+        value: 'select',
       },
-    ]);
-    project_uuid = selectedProjectUuid; // Assign the selected project UUID
-  }
-
-  if (action === 'Enter Project') {
-    const { project_uuid: enteredProjectUuid } = await inquirer.prompt([
       {
-        type: 'input',
-        name: 'project_uuid',
-        message: 'Input a project:',
+        name: 'Import Project',
+        value: 'import',
       },
-    ]);
-    project_uuid = enteredProjectUuid; // Assign the entered project UUID
+      {
+        name: 'Cancel',
+        value: '',
+      },
+    ],
+  });
+
+  if (answer === '') {
+    return;
   }
 
-  const tickets = await getAllProjectTicketsFromRelay(project_uuid);
+  let projectUuid: string = '';
+  if (answer === 'select') {
+    const selectedProject: string = await selectExistingLocalProject(prisma);
+    if (selectedProject === '') {
+      return;
+    }
+    projectUuid = selectedProject;
+  } else if (answer === 'import') {
+    const selectedProject = await input(
+      {
+        message: 'Nostr Project UUID:',
+        validate: (input) => input.trim() !== '' || 'Project uuid is required',
+      });
+    projectUuid = selectedProject;
+  }
+
+  const tickets = await getAllProjectTicketsFromRelay(projectUuid);
   tickets.forEach((ticket) => {
     const date = new Date(ticket.lastEventCreatedAt * 1000); // Convert milliseconds to a Date object
     const createdAt = new Date(ticket.createdAt * 1000); // Convert milliseconds to a Date object
@@ -479,6 +499,7 @@ async function showAllTicketsInProjectFromRelayFlow(prisma: PrismaClient): Promi
     console.log(`Creator At: ${createdAt}`);
     console.log(`Last Event ID: ${ticket.lastEventId}`);
     console.log(`Last Time: ${date}`);
+    console.log('\n');
   });
 
   return;
