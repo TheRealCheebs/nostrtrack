@@ -2,10 +2,14 @@ import { rawlist, input, confirm } from '@inquirer/prompts';
 import chalk from 'chalk';
 import { v4 as uuidv4 } from 'uuid';
 import { type PrismaClient, type Project as PrismaProject, type Ticket as PrismaTicket, type ProjectMember as PrismaProjectMember } from '@prisma/client';
-import { NullablePrismaProjectWithDetails } from '../types/project';
+import { NullablePrismaProjectWithDetails, PrismaProjectWithDetails } from '../types/project';
 
+import {
+  prismaToProject,
+} from '../utils/project-transformers';
+import { printProjectList } from './ui-utils';
 import { createProject } from '../services/project';
-import { saveNewProject, removeProject, getProjects, getProjectById } from '../services/prisma/project';
+import { saveNewProject, removeProject, getProjects, getProjectsWithDetails, getProjectById } from '../services/prisma/project';
 import {
   publishProject,
   createProjectMemberFromNPub,
@@ -38,8 +42,7 @@ export async function mainProjectsFlow(prisma: PrismaClient) {
       await createProjectFlow(prisma);
     },
     'Import Project': async () => {
-      console.log(chalk.yellow('TODO: Importing project...'));
-      return Promise.resolve();
+      await importProjectFlow(prisma);
     },
     'Edit Project': async () => {
       console.log(chalk.yellow('TODO: Editing project...'));
@@ -164,6 +167,58 @@ async function createProjectFlow(prisma: PrismaClient) {
   }
 }
 
+async function importProjectFlow(prisma: PrismaClient) {
+  const projectUuid = await input(
+    {
+      message: 'Nostr Project UUID:',
+      validate: (input) => input.trim() !== '' || 'Project uuid is required',
+    });
+
+  const projects: Project[] = await getAllProjectsFromRelay(projectUuid);
+  if (projects.length !== 1) {
+    console.log(chalk.red(`Failed to fetch project with uuid ${projectUuid} from configured relays`));
+    return;
+  }
+
+  // TODO: also need to make sure private projects can be fetched from users in the list...
+
+  const project: Project = projects[0];
+  // TODO: finish
+  console.log(`Project Name: ${project.name}`);
+  console.log(`Description: ${project.description}`);
+  console.log(`Private: ${project.isPrivate ? 'Yes' : 'No'}`);
+  console.log(`Last Event ID: ${project.lastEventId}`);
+  console.log(`Last Time: ${formatNostrTimestamp(project.lastEventCreatedAt)}`);
+
+
+  // List project tickets
+  console.log(chalk.blue('Tickets:'));
+  if (project.tickets.length > 0) {
+    project.tickets.forEach((ticket) => {
+      console.log(`${ticket}`);
+    });
+  } else {
+    console.log(chalk.yellow('\tNo tickets available.'));
+  }
+
+  // If the project is not private, show admin members
+  if (project.isPrivate === false) {
+    console.log(chalk.blue('Admin Members:'));
+    const adminMembers: ProjectMember[] = project.members.filter((member: ProjectMember) => member.role === 'admin');
+    if (adminMembers.length > 0) {
+      adminMembers.forEach((admin: ProjectMember) => {
+        console.log(`\t- ${getNpub(admin.pubkey)}`);
+      });
+    } else {
+      console.log(chalk.yellow('\tNo admin members.'));
+    }
+  }
+  console.log('\n');
+
+  saveNewProject(prisma, project);
+  console.log(chalk.green(`Project ${projectUuid} imported successfully.`));
+}
+
 async function removeLocalProjectsFlow(prisma: PrismaClient) {
   const selectedProject: string = await selectExistingLocalProject(prisma);
   if (selectedProject === '') {
@@ -191,36 +246,6 @@ async function removeLocalProjectsFlow(prisma: PrismaClient) {
   }
 }
 
-function printPrismaProjectList(projects: PrismaProject[]) {
-  const columnWidths = {
-    uuid: 40,
-    name: 20,
-    updated: 25,
-    private: 10,
-  };
-
-  // Create the header
-  const header = [
-    'Project UUID'.padEnd(columnWidths.uuid),
-    'Name'.padEnd(columnWidths.name),
-    'Updated'.padEnd(columnWidths.updated),
-    'Private'.padEnd(columnWidths.private),
-  ].join(' | ');
-
-  const rows = projects.map((project) => {
-    const updatedDate = new Date(Number(project.last_event_created_at) * 1000).toISOString();
-    const privateStatus = project.is_private ? 'Yes' : 'No';
-
-    return [
-      project.uuid.padEnd(columnWidths.uuid),
-      project.name.padEnd(columnWidths.name),
-      updatedDate.padEnd(columnWidths.updated),
-      privateStatus.padEnd(columnWidths.private),
-    ].join(' | ');
-  });
-  const table = [header, '-'.repeat(header.length), ...rows].join('\n');
-  console.log(table);
-}
 
 // TODO: move this
 function printPrismaTicketList(tickets: PrismaTicket[]) {
@@ -242,7 +267,8 @@ function printPrismaTicketList(tickets: PrismaTicket[]) {
   ].join(' | ');
 
   const rows = tickets.map((ticket) => {
-    const updatedDate = new Date(Number(ticket.last_event_created_at) * 1000).toISOString();
+    //const updatedDate = new Date(Number(ticket.last_event_created_at) * 1000).toISOString();
+    const updatedDate = formatNostrTimestamp(Number(ticket.last_event_created_at));
 
     return [
       ticket.uuid.padEnd(columnWidths.uuid),
@@ -262,16 +288,19 @@ export async function listLocalProjectsFlow(prisma: PrismaClient) {
     console.log(chalk.yellow('No pubkey found, please load userKeys'));
     return;
   }
-  const projects: PrismaProject[] = await getProjects(prisma, pubkey);
+  const pprojects: NullablePrismaProjectWithDetails[] = await getProjectsWithDetails(prisma, pubkey);
 
-  if (projects.length === 0) {
+  if (pprojects === null || pprojects.length === 0) {
     console.log(chalk.yellow('No projects found.'));
     return;
   }
 
   console.log(chalk.blue(`Projects ${getNpub(pubkey)} has locally saved:`));
 
-  printPrismaProjectList(projects);
+  const projects: Project[] = pprojects
+    .filter((p): p is PrismaProjectWithDetails => p !== null)
+    .map(p => prismaToProject(p));
+  printProjectList(projects);
 
   const conf = await confirm({
     message: 'View Project Details',
@@ -363,7 +392,7 @@ export async function getProjectDetails(prisma: PrismaClient, projectId: string)
     console.log(`Description: ${project.description}`);
     console.log(`Private: ${project.is_private ? 'Yes' : 'No'}`);
     console.log(`Last Event ID: ${project.last_event_id}`);
-    console.log(`Last Time: ${formatNostrTimestamp(project.last_event_created_at)}`);
+    console.log(`Last Time: ${formatNostrTimestamp(Number(project.last_event_created_at))}`);
 
 
     // List project tickets
@@ -406,7 +435,7 @@ async function showAllProjectsOnRelayFlow(): Promise<void> {
     },
   );
 
-  const projects: Project[] = await getAllProjectsFromRelay(Number(limit));
+  const projects: Project[] = await getAllProjectsFromRelay(undefined, Number(limit));
 
   if (projects.length === 0) {
     console.log(chalk.yellow('There are no projects on the saved relays'));
@@ -418,7 +447,7 @@ async function showAllProjectsOnRelayFlow(): Promise<void> {
     console.log(`Description: ${project.description}`);
     console.log(`Private: ${project.isPrivate ? 'Yes' : 'No'}`);
     console.log(`Last Event ID: ${project.lastEventId}`);
-    console.log(`Last Time: ${formatNostrTimestamp(BigInt(project.lastEventCreatedAt))}`);
+    console.log(`Last Time: ${formatNostrTimestamp(project.lastEventCreatedAt)}`);
 
 
     // List project tickets
@@ -435,7 +464,6 @@ async function showAllProjectsOnRelayFlow(): Promise<void> {
     if (project.isPrivate === false) {
       console.log(chalk.blue('Admin Members:'));
       const adminMembers: ProjectMember[] = project.members.filter((member: ProjectMember) => member.role === 'admin');
-      console.log(adminMembers);
       if (adminMembers.length > 0) {
         adminMembers.forEach((admin: ProjectMember) => {
           console.log(`\t- ${getNpub(admin.pubkey)}`);

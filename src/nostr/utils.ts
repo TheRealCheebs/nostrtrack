@@ -144,15 +144,30 @@ export function closeNostr(): void {
   }
 }
 
-export async function getAllProjectsFromRelay(limit: number = 10): Promise<Project[]> {
+export async function getAllProjectsFromRelay(projectUuid?: string, limit?: number): Promise<Project[]> {
+  const tags: string[][] = [];
+
   if (!pool || relays.length === 0) {
-    throw new Error('Nostr is not initialized. Call initNostr() first.');
+    console.warn('Nostr is not initialized. Call initNostr() first.');
+    return [];
   }
+  if (projectUuid) {
+    tags.push(['d', projectUuid]);
+  }
+  const filter: any = {
+    kinds: [NOSTR_PROJECT_KIND],
+  };
+
+  if (tags.length > 0) {
+    filter.tags = { d: tags.map(tag => tag[1]) };
+  }
+
+  if (limit) {
+    filter.limit = limit;
+  }
+
   try {
-    const events: NostrEvent[] = await pool.querySync(relays, {
-      kinds: [NOSTR_PROJECT_KIND],
-      limit: limit,
-    });
+    const events: NostrEvent[] = await pool.querySync(relays, filter);
     const projects: Project[] = [];
 
     events.forEach((event) => {
@@ -235,7 +250,9 @@ export async function getAllProjectTicketsFromRelay(
   }
 }
 
-export function formatNostrTimestamp(timestamp: bigint): string {
-  const date = new Date(Number(timestamp)); // Convert milliseconds to a Date object
-  return date.toLocaleString(); // Format the date to a readable string
+export function formatNostrTimestamp(timestamp: Number): string {
+  const date = new Date(Number(timestamp) * 1000);
+  // add option for utc
+  return date.toISOString();
+  //return date.toLocaleString(); // Format the date to a readable string
 }

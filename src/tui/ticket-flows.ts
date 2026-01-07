@@ -13,9 +13,11 @@ import {
 import {
   addNewTicketToProject,
   getProjectById,
-  prismaToProject,
   updateProjectNostrEvent,
 } from '../services/prisma/project';
+import {
+  prismaToProject,
+} from '../utils/project-transformers';
 import { getAllTicketsFromRelay } from '../nostr/utils';
 import { userState } from '../state/user-state';
 import type { Ticket } from '../interfaces/ticket';

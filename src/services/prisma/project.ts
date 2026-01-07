@@ -13,7 +13,7 @@ export async function saveNewProject(
 ): Promise<PrismaProject> {
   // lastEventId and lastEventCreatedAt should be null on new events
   // tickets will also be empty on a brand new project.
-  const { uuid, name, description, isPrivate, createdAt, members } = project;
+  const { uuid, name, description, isPrivate, lastEventId, createdAt, members } = project;
 
   return await prisma.project.create({
     data: {
@@ -22,7 +22,7 @@ export async function saveNewProject(
       description,
       is_private: isPrivate,
       created_at: createdAt,
-      last_event_id: '',
+      last_event_id: lastEventId,
       last_event_created_at: createdAt,
       members: {
         create: members.map((member: ProjectMember) => ({
@@ -43,6 +43,30 @@ export async function removeProject(
     where: {
       uuid: projectUuid,
     }
+  });
+}
+
+export async function getProjectsWithDetails(prisma: PrismaClient, pubkey: string): Promise<NullablePrismaProjectWithDetails[]> {
+  return await prisma.project.findMany({
+    where: {
+      OR: [
+        {
+          members: {
+            some: {
+              pubkey: pubkey, // pubkey needs to be a member
+            },
+          },
+        },
+        {
+          is_private: false, // or the project is public and it's been loaded
+        },
+      ],
+    },
+    orderBy: { created_at: 'desc' },
+    include: {
+      members: true, // Include project members
+      tickets: true, // Include tickets
+    },
   });
 }
 
@@ -237,28 +261,4 @@ export async function updateProject(prisma: PrismaClient, project: Project): Pro
       },
     },
   });
-}
-
-function prismaToProjectMember(prismaMember: PrismaProjectMember): ProjectMember {
-  return {
-    projectId: prismaMember.project_uuid,
-    pubkey: prismaMember.pubkey,
-    role: prismaMember.role,
-    createdAt: Number(prismaMember.created_at), // Convert bigint to number
-  };
-}
-
-// Main function to map Prisma Project to general Project
-export function prismaToProject(prismaProject: PrismaProjectWithDetails): Project {
-  return {
-    uuid: prismaProject.uuid,
-    name: prismaProject.name,
-    description: prismaProject.description,
-    isPrivate: prismaProject.is_private, // Map Prisma's snake_case to camelCase
-    createdAt: Number(prismaProject.created_at), // Convert bigint to number
-    lastEventId: prismaProject.last_event_id,
-    lastEventCreatedAt: Number(prismaProject.last_event_created_at), // Convert bigint to number
-    members: prismaProject.members.map(prismaToProjectMember), // Map members
-    tickets: prismaProject.tickets.map((ticket) => ticket.uuid), // Extract ticket UUIDs
-  };
 }
